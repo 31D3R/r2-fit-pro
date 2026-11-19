@@ -9,6 +9,7 @@ import { Pencil, Sparkles } from 'lucide-react'
 import type { Dieta } from '../types'
 import { Button, Input, Select, Textarea, Card, Badge, Spinner } from '../components/UI'
 import { entregarArquivo } from '../lib/nativo'
+import { useRefeicoesFeitas } from '../lib/dietaDiario'
 
 function DietMenu({ onSelect }: { onSelect: (v: 'nova' | 'contador') => void }) {
   const { user } = useAuth()
@@ -188,7 +189,9 @@ function DietForm({ onBack, onCreated }: { onBack: () => void; onCreated: (d: Di
 
 function DietDetail({ id }: { id: string }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [dieta, setDieta] = useState<Dieta | null>(null)
+  const refeicoesFeitas = useRefeicoesFeitas(user?.id, id, dieta?.plano ?? null)
   const [loading, setLoading] = useState(true)
   const [rascunho, setRascunho] = useState<{ nome: string; plano: PlanoAlimentar } | null>(null)
   const [pedidoIA, setPedidoIA] = useState('')
@@ -298,6 +301,7 @@ function DietDetail({ id }: { id: string }) {
       </Card>
       <div>
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">Refeições ({plano.refeicoes?.length ?? 0})</h2>
+        {refeicoesFeitas.erro && <p role="alert" className="text-sm text-red-400 mb-2">{refeicoesFeitas.erro}</p>}
         <div className="flex flex-col gap-3">{plano.refeicoes?.map((r, i) => (
           <Card key={i}>
             <div className="flex items-center justify-between mb-3">
@@ -310,6 +314,25 @@ function DietDetail({ id }: { id: string }) {
                 <div className="flex items-center gap-2 text-xs text-zinc-500"><span>{a.quantidade}</span><span className="text-zinc-600">·</span><span>{a.calorias}kcal</span></div>
               </div>
             ))}</div>
+            {(() => {
+              const feita = refeicoesFeitas.feitas.has(i)
+              return (
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800">
+                  {feita ? (
+                    <>
+                      <span className="flex-1 text-sm font-semibold text-green-400">✓ Feito · lançado no diário de hoje</span>
+                      <button type="button" disabled={refeicoesFeitas.ocupada === i} onClick={() => refeicoesFeitas.desfazer(i)}
+                        className="text-xs font-semibold text-zinc-400 px-2 py-1 disabled:opacity-50" aria-label={`Desfazer ${r.nome}`}>Desfazer</button>
+                    </>
+                  ) : (
+                    <button type="button" disabled={refeicoesFeitas.ocupada === i || !r.alimentos?.length} onClick={() => refeicoesFeitas.marcar(i)}
+                      className="flex-1 py-2 rounded-xl text-sm font-bold bg-green-500/15 text-green-400 border border-green-500/30 disabled:opacity-50" aria-label={`Marcar ${r.nome} como feito`}>
+                      {refeicoesFeitas.ocupada === i ? 'Lançando…' : 'Marcar como feito'}
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
           </Card>
         ))}</div>
       </div>

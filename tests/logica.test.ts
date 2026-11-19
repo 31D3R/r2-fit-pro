@@ -13,6 +13,7 @@ import { revisaoSemanal, sequenciaETreinos } from '../src/lib/progressoBase'
 import { umRM, anilhasPorLado } from '../src/lib/calculadoras'
 import { normalizarJejum, situacaoJejum, encerrar, duracao } from '../src/lib/jejumBase'
 import { listaDeCompras } from '../src/lib/comprasBase'
+import { alimentosDaRefeicao, refeicaoDoDiario } from '../src/lib/dietaDiarioBase'
 import { DocPdf, winAnsi } from '../src/lib/pdfSimples'
 
 let ok = 0
@@ -522,5 +523,15 @@ await t('PDF: arquivo válido com acentos, várias páginas e sem emoji', () => 
   const offs = txt.slice(xref).match(/(\d{10}) 00000 n/g)!.map(x => Number(x.slice(0, 10)))
   offs.forEach((o, i) => assert.ok(txt.startsWith(`${i + 1} 0 obj`, o), `objeto ${i + 1}`))
   assert.ok(txt.includes('s\xe9rie'), 'acento em WinAnsi')
+})
+await t('dieta para o diário: alimentos com macros estimados e refeição certa', () => {
+  const plano = { nome: 'X', objetivo: 'x', calorias_dia: 1000, macros: { proteina_g: 100, carboidrato_g: 100, gordura_g: 20 }, dicas: [],
+    refeicoes: [{ nome: 'Café da Manhã', horario: '08:00', calorias: 400, alimentos: [{ nome: 'Ovos', quantidade: '3 ovos', calorias: 240 }, { nome: 'Pão', quantidade: '2 fatias', calorias: 160 }] },
+      { nome: 'Jantar', horario: '19:00', calorias: 600, alimentos: [{ nome: 'Frango', quantidade: '200g', calorias: 600 }] }] }
+  const a = alimentosDaRefeicao(plano, 0)
+  assert.deepEqual(a.map(x => [x.nome, x.calorias, x.proteina_g, x.carboidrato_g, x.gordura_g]), [['Ovos', 240, 24, 24, 4.8], ['Pão', 160, 16, 16, 3.2]])
+  assert.equal(alimentosDaRefeicao(plano, 5).length, 0)
+  assert.equal(refeicaoDoDiario('Café da Manhã'), 'Café da manhã'); assert.equal(refeicaoDoDiario('Almoço'), 'Almoço')
+  assert.equal(refeicaoDoDiario('Jantar'), 'Jantar'); assert.equal(refeicaoDoDiario('Lanche da tarde'), 'Lanches'); assert.equal(refeicaoDoDiario('Ceia'), 'Lanches')
 })
 console.log(`\n${ok} testes passaram`)

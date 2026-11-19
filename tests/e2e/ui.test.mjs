@@ -946,6 +946,22 @@ await t('treino perdido: planejamento da divisão, confirmar, desfazer, encaixar
   await ctx.close()
 })
 
+await t('dieta: marcar refeição como feita lança no diário de hoje e desfaz', async () => {
+  const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', nutricao: true })
+  await page.goto(BASE + '/dieta/d1')
+  await page.getByRole('button', { name: 'Marcar Café da manhã como feito' }).click()
+  await page.getByText('✓ Feito · lançado no diário de hoje').waitFor()
+  const ins = page.gravacoes.filter(g => g.tabela === 'food_logs' && g.metodo === 'POST').pop().corpo
+  assert.deepEqual(ins.map(x => [x.nome, x.calorias, x.refeicao, x.origem]), [['Ovos mexidos', 210, 'Café da manhã', 'dieta:d1:0'], ['Pão integral', 90, 'Café da manhã', 'dieta:d1:0']])
+  assert.equal(ins[0].proteina_g, 52.5, 'macros estimados pela proporção da dieta')
+  await page.screenshot({ path: `${SHOTS}/dieta-feito.png` })
+  await page.getByRole('button', { name: 'Desfazer Café da manhã' }).click()
+  await page.getByRole('button', { name: 'Marcar Café da manhã como feito' }).waitFor()
+  assert.ok(page.gravacoes.some(g => g.tabela === 'food_logs' && g.metodo === 'DELETE'))
+  assert.deepEqual(page.consoleErros, [])
+  await ctx.close()
+})
+
 await t('funções novas: calculadoras, jejum, lista de compras, conquistas e trocar exercício', async () => {
   const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', nutricao: true, treino: 'dois' })
   // calculadoras
