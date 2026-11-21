@@ -1,6 +1,6 @@
 {
-  "versionCode": 11,
-  "versionName": "1.9.0",
-  "arquivo": "r2-fit-pro-1.9.0.apk",
-  "novidades": "Lembretes que não tocam quando você já registrou, botão Parar no contador, aviso no fim do jejum e PDF/imagens salvos direto do app."
+  "versionCode": 12,
+  "versionName": "1.9.1",
+  "arquivo": "r2-fit-pro-1.9.1.apk",
+  "novidades": "Lembretes com ícone de sino, botão Parar da notificação fecha o contador na tela, tela sem internet com Tentar de novo e correções do botão voltar."
 }

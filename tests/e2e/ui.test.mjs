@@ -148,7 +148,7 @@ async function contexto(browser, { logado = false, estado = 'sem_assinatura', ad
       if (p === '/rest/v1/rpc/acomp_ver_convite') { grava('acomp_ver_convite'); return json({ nome: 'Rafa Personal', cref: '123456-G/MG', proprio: false, ja_vinculado: false }) }
       if (p === '/rest/v1/rpc/acomp_aceitar') { grava('acomp_aceitar'); return json('v9') }
       if (p === '/rest/v1/personais') return json(gravacoes.some(g => g.tabela === 'acomp_ativar_personal') ? [{ codigo: 'K7P2QX', nome_exibicao: 'Cliente Teste', cref: '012345-G/SP', cref_verificado: false }] : [])
-      if (p === '/rest/v1/rpc/acomp_ativar_personal') { grava('acomp_ativar_personal'); return json({ codigo: 'K7P2QX', nome_exibicao: 'Cliente Teste', cref: rota.request().postDataJSON().p_cref ?? '012345-G/SP', cref_verificado: false }) }
+      if (p === '/rest/v1/rpc/acomp_ativar_personal') { grava('acomp_ativar_personal'); return json({ codigo: 'K7P2QX', nome_exibicao: 'Cliente Teste', cref: rota.request().postDataJSON().p_cref, cref_verificado: false }) }
       if (p === '/rest/v1/rpc/acomp_meus_alunos') return json(ALUNOS)
       if (p === '/rest/v1/rpc/acomp_dados_aluno') return json(DADOS_ALUNO)
       if (p === '/rest/v1/acomp_mensagens') return json([...MENSAGENS].reverse())
@@ -1786,6 +1786,20 @@ await t('personal: aluno aceita convite pelo link, escolhe o que compartilhar e 
   // Não Premium: o modo personal convida a assinar
   await page.getByText('Você é personal?').waitFor()
   await page.getByRole('link', { name: 'Premium' }).waitFor()
+  assert.deepEqual(page.consoleErros, [])
+  await ctx.close()
+})
+
+await t('admin: abre o painel do personal sem informar CREF', async () => {
+  const { ctx, page } = await contexto(browser, { logado: true, estado: 'admin', admin: true, personal: true })
+  await page.goto(BASE + '/admin')
+  await page.getByRole('button', { name: 'Personais (CREF)' }).click()
+  await page.getByRole('button', { name: 'Abrir painel do personal' }).click()
+  await page.getByRole('button', { name: /Painel do personal: tocar para voltar ao modo normal/ }).waitFor()
+  assert.ok(page.url().endsWith('/dashboard'))
+  const at = page.gravacoes.find(g => g.tabela === 'acomp_ativar_personal')
+  assert.equal(at?.corpo?.p_cref, null, 'sem CREF')
+  await page.getByText('Bia Souza').first().waitFor()
   assert.deepEqual(page.consoleErros, [])
   await ctx.close()
 })

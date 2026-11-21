@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ExternalLink } from 'lucide-react'
-import { adminPersonais, adminVerificarCref, type PersonalAdmin } from '../../lib/acompanhamento'
+import { ExternalLink, Eye } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { definirModo } from '../../lib/modoApp'
+import { adminPersonais, adminVerificarCref, ativarPersonal, meuPerfilPersonal, type PersonalAdmin } from '../../lib/acompanhamento'
 import { LINK_CONSULTA_CREF } from '../../lib/crefBase'
 import { Spinner } from '../../components/UI'
 
@@ -16,9 +19,28 @@ export default function Personais() {
     try { await adminVerificarCref(p.user_id, ok); carregar() } catch (e) { setErro((e as Error).message) }
     setOcupado(null)
   }
+  // Admin confere a versão do personal sem informar CREF (o servidor libera só para admin)
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [abrindo, setAbrindo] = useState(false)
+  const verPainel = async () => {
+    if (!user) return
+    setAbrindo(true); setErro('')
+    try {
+      if (!(await meuPerfilPersonal(user.id))) await ativarPersonal(user.user_metadata?.nome ?? 'Admin', null)
+      definirModo('personal', user.id)
+      navigate('/dashboard')
+    } catch (e) { setErro((e as Error).message) } finally { setAbrindo(false) }
+  }
   if (!lista) return <div className="flex justify-center py-10"><Spinner /></div>
   return (
     <div className="flex flex-col gap-3">
+      <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-3 flex flex-col gap-2">
+        <p className="text-sm text-zinc-200"><b>Ver o painel do personal</b> como um personal vê, sem informar CREF. Para voltar, toque na faixa roxa "voltar ao modo normal".</p>
+        <button onClick={verPainel} disabled={abrindo} className="self-start inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-500 text-white text-sm font-bold disabled:opacity-60">
+          <Eye className="w-4 h-4" />{abrindo ? 'Abrindo…' : 'Abrir painel do personal'}
+        </button>
+      </div>
       <p className="text-sm text-zinc-400">O CONFEF não tem consulta automática. Abra a consulta, procure pelo nome ou número e marque como verificado. Mudar o CREF tira a verificação.</p>
       <a href={LINK_CONSULTA_CREF} target="_blank" rel="noopener noreferrer" className="self-start inline-flex items-center gap-1.5 text-sm font-semibold text-green-400">Abrir consulta do CONFEF <ExternalLink className="w-4 h-4" /></a>
       {erro && <p className="text-sm text-red-400">{erro}</p>}

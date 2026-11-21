@@ -257,7 +257,8 @@ observação; marca "feito" e a próxima vira hoje + intervalo (`src/lib/rotinaB
   selo "Personal" no topo, primeira aba "Alunos" e o Início vira o painel (alunos + convite + CREF). Troca também pelo Menu.
 - **CREF obrigatório** (migração `20261121120000_personal_cref.sql`, aplicada): `acomp_ativar_personal` exige CREF no formato
   000000-G/UF (normaliza "CREF 12345 g sp"; recusa número zerado, categoria diferente de G/P e estado inexistente).
-  O CREF não tem dígito verificador como o CPF: o formato certo é a confirmação (decisão do dono). Opcional: admin → aba
+  O CREF não tem dígito verificador como o CPF: o formato certo é a confirmação (decisão do dono). Admin pode abrir o painel
+  sem CREF (migração `20261121150000_personal_admin_sem_cref.sql`, aplicada): admin → "Personais (CREF)" → "Abrir painel do personal". Opcional: admin → aba
   "Personais (CREF)" abre a consulta do CONFEF e marca como conferido (`admin_personais`, `admin_verificar_cref`).
 - **Busca sem "não encontrado"**: alimento sem resultado na tabela/Open Food Facts → a IA calcula sozinha (gpt-4o-mini), aparece na lista
   (só depois que o banco e o Open Food Facts responderam) e vai para a tabela compartilhada só quando a pessoa escolhe o item;

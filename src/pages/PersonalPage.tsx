@@ -136,7 +136,7 @@ function CartaoPersonal({ p, meuId, aoMudar }: { p: MeuPersonal; meuId: string; 
 
 /** Modo personal: ativar, código e link de convite. */
 export function ModoPersonal({ userId, nomePadrao }: { userId: string; nomePadrao: string }) {
-  const { premium } = useAcesso()
+  const { premium, admin } = useAcesso()
   const [perfil, setPerfil] = useState<PerfilPersonal | null | undefined>(undefined)
   const [nome, setNome] = useState(nomePadrao)
   const [cref, setCref] = useState('')
@@ -193,7 +193,9 @@ export function ModoPersonal({ userId, nomePadrao }: { userId: string; nomePadra
         )
       ) : (
         <>
-          {!perfil.cref ? (
+          {!perfil.cref && admin ? (
+            <p className="text-xs text-violet-300">Visualização do admin: sem CREF (os personais precisam informar).</p>
+          ) : !perfil.cref ? (
             <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 flex flex-col gap-2">
               <p className="text-sm text-amber-200">Agora o CREF é obrigatório para atender alunos pelo app.</p>
               <Input label="CREF" value={cref} onChange={e => setCref(e.target.value)} maxLength={30} placeholder="000000-G/UF" />
