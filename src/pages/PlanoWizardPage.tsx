@@ -11,6 +11,7 @@ import {
 } from '../lib/treinoModel'
 import { Spinner } from '../components/UI'
 import { Chip, Rotulo } from '../components/treino/Chip'
+import { confirmar } from '../components/Confirmacao'
 
 const GRUPO_IDS = Object.keys(GRUPOS) as GrupoMuscular[]
 
@@ -95,7 +96,7 @@ export default function PlanoWizardPage() {
     setErro('')
     if (editando && treino) {
       const removidos = treino.plano.dias.slice(n).filter(d => d.exercicios.length > 0)
-      if (removidos.length && !confirm(`Os treinos ${removidos.map(d => d.letra).join(', ')} serão removidos junto com seus exercícios. Continuar?`)) return
+      if (removidos.length && !(await confirmar(`Os treinos ${removidos.map(d => d.letra).join(', ')} serão removidos junto com seus exercícios. Continuar?`, { ok: 'Continuar', perigo: true }))) return
       setGerando(true)
       try {
         await salvar(montarPlanoManual())

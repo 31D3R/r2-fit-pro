@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { normalizarTreino, type TreinoCarregado } from '../lib/treinoApi'
 import type { Treino } from '../types'
 import { Spinner } from '../components/UI'
+import { avisar, confirmar } from '../components/Confirmacao'
 
 function IconeIA() {
   return (
@@ -38,9 +39,9 @@ export default function WorkoutPage() {
   }, [user])
 
   const excluir = async (t: TreinoCarregado) => {
-    if (!confirm(`Excluir o plano "${t.nome}"? Esta ação não pode ser desfeita.`)) return
+    if (!(await confirmar(`Excluir o plano "${t.nome}"?`, { detalhe: 'Esta ação não pode ser desfeita.', ok: 'Excluir' }))) return
     const { error } = await supabase.from('treinos').delete().eq('id', t.id)
-    if (error) { alert('Não foi possível excluir o plano.'); return }
+    if (error) { await avisar('Não foi possível excluir o plano.'); return }
     setTreinos(p => p.filter(x => x.id !== t.id))
   }
 

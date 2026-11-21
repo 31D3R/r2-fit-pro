@@ -17,6 +17,7 @@ import CompartilharCartao from '../components/CompartilharCartao'
 import { cartaoTreino } from '../lib/cartoesBase'
 import { useContadorTreino } from '../components/treino/ContadorTreino'
 import { ExecucaoAmpliada, MiniExecucao, animacaoDe } from '../components/treino/ExecucaoAnimada'
+import { confirmar } from '../components/Confirmacao'
 
 /** Chave deslizante "Concluído". */
 function ChaveConcluido({ ligado, ocupado, onTrocar }: { ligado: boolean; ocupado: boolean; onTrocar: () => void }) {
@@ -108,8 +109,8 @@ export default function TreinoDiaPage() {
     setMarcando(null)
   }
 
-  const remover = (ex: ExercicioPlano) => {
-    if (confirm(`Remover "${ex.nome}" deste treino?`)) atualizarExercicios(l => l.filter(e => e.id !== ex.id))
+  const remover = async (ex: ExercicioPlano) => {
+    if (await confirmar(`Remover "${ex.nome}" deste treino?`, { ok: 'Remover' })) atualizarExercicios(l => l.filter(e => e.id !== ex.id))
   }
 
   // Treino completo: faz em sequência os exercícios que faltam (ou todos, se não falta nenhum)

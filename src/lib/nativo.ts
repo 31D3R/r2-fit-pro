@@ -43,6 +43,9 @@ export function telaLigadaNativa(ligada: boolean) {
 
 // --- Botão voltar do Android ---
 let bloqueioVoltar: (() => boolean) | null = null
+let fecharModal: (() => boolean) | null = null
+/** Janela aberta por cima de tudo (pergunta do app): o voltar fecha ela primeiro. */
+export function definirFechamentoModal(f: (() => boolean) | null) { fecharModal = f }
 /** Tela que não pode ser deixada sem confirmar (ex.: contador rodando): devolve true para sair. null tira o bloqueio. */
 export function bloquearVoltar(f: (() => boolean) | null) { bloqueioVoltar = f }
 
@@ -58,6 +61,7 @@ export function escutarVoltar() {
   const app = (c.registerPlugin?.<AppPlugin>('App') ?? (c.Plugins?.App as AppPlugin | undefined))
   if (!app?.addListener) return
   app.addListener('backButton', ({ canGoBack }) => {
+    if (fecharModal && fecharModal()) return
     if (bloqueioVoltar && !bloqueioVoltar()) return
     if (canGoBack && window.history.length > 1) window.history.back()
     else if (typeof app.minimizeApp === 'function') app.minimizeApp().catch(() => app.exitApp())

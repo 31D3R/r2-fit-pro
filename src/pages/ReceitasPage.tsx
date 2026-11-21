@@ -13,6 +13,7 @@ import { Button, Input, Spinner, Textarea } from '../components/UI'
 import { fmt } from '../components/nutricao/Graficos'
 import AdicionarAlimento, { Folha } from '../components/nutricao/AdicionarAlimento'
 import EditorAlimento from '../components/nutricao/EditorAlimento'
+import { confirmar } from '../components/Confirmacao'
 
 /** Lista de receitas salvas. */
 export function ListaReceitas() {
@@ -102,7 +103,7 @@ export function EditorReceita() {
     } catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível salvar'); setSalvando(false) }
   }
   const apagar = async () => {
-    if (!id || !confirm(`Apagar a receita "${nome}"?`)) return
+    if (!id || !(await confirmar(`Apagar a receita "${nome}"?`, { ok: 'Apagar' }))) return
     await apagarReceita(id)
     navigate('/receitas')
   }

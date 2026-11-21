@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { redimensionarImagem } from '../lib/imagem'
 import { dataLocalHoje } from '../lib/treinoModel'
 import { Spinner } from '../components/UI'
+import { confirmar } from '../components/Confirmacao'
 
 // Evolução: medidas do corpo e fotos de antes e depois (fotos num armazenamento privado: só a própria pessoa vê).
 
@@ -70,7 +71,7 @@ function Medidas({ userId }: { userId: string }) {
     setForm({ data: dataLocalHoje() }); carregar()
   }
   async function apagar(id: string) {
-    if (!confirm('Apagar estas medidas?')) return
+    if (!(await confirmar('Apagar estas medidas?', { ok: 'Apagar' }))) return
     await supabase.from('medidas_corporais').delete().eq('id', id); carregar()
   }
 
@@ -155,7 +156,7 @@ function Fotos({ userId }: { userId: string }) {
     setEnviando(false)
   }
   async function apagar(f: Foto) {
-    if (!confirm('Apagar esta foto?')) return
+    if (!(await confirmar('Apagar esta foto?', { ok: 'Apagar' }))) return
     await supabase.storage.from('evolucao').remove([f.caminho])
     await supabase.from('fotos_evolucao').delete().eq('id', f.id)
     carregar()

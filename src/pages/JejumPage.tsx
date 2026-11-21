@@ -6,6 +6,7 @@ import { carregarJejum, salvarJejum } from '../lib/jejum'
 import { PROTOCOLOS, duracao, encerrar, situacaoJejum, type DadosJejum } from '../lib/jejumBase'
 import { ehAppNativo } from '../lib/nativo'
 import { Spinner } from '../components/UI'
+import { confirmar } from '../components/Confirmacao'
 
 const hora = (d: Date) => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 const diaHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -57,7 +58,7 @@ export default function JejumPage() {
           <p className="text-sm text-zinc-300 text-center">{s.concluido ? '🎉 Meta do jejum batida!' : `Faltam ${duracao(s.restanteMs)} · termina às ${hora(s.fim)}`}</p>
           <p className="text-xs text-zinc-500">{s.fase}</p>
           <button type="button" onClick={() => gravar(encerrar(d))} className="w-full py-3 rounded-2xl text-sm font-bold bg-green-500 text-zinc-950">Encerrar jejum</button>
-          <button type="button" onClick={() => confirm('Cancelar sem registrar?') && gravar({ ...d, ativo: null })} className="text-xs text-zinc-500">Cancelar sem registrar</button>
+          <button type="button" onClick={async () => { if (await confirmar('Cancelar o jejum sem registrar?', { ok: 'Cancelar jejum', cancelar: 'Voltar' })) gravar({ ...d, ativo: null }) }} className="text-xs text-zinc-500">Cancelar sem registrar</button>
         </section>
       ) : (
         <section aria-label="Começar jejum" className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 flex flex-col gap-4">

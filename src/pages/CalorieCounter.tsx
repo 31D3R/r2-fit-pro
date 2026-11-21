@@ -14,6 +14,7 @@ import Exercicios from '../components/progresso/Exercicios'
 import CartaoAgua from '../components/progresso/CartaoAgua'
 import { ultimoPeso } from '../lib/progresso'
 import { restanteDia } from '../lib/exercicios'
+import { confirmar } from '../components/Confirmacao'
 
 const ICONE_REFEICAO: Record<Refeicao, string> = { 'Café da manhã': '☕', Almoço: '🍽️', Jantar: '🌙', Lanches: '🍎' }
 
@@ -47,7 +48,7 @@ export default function CalorieCounter() {
 
   const [editando, setEditando] = useState<RegistroAlimento | null>(null)
   const remover = async (id: string) => {
-    if (!confirm('Remover este alimento?')) return
+    if (!(await confirmar('Remover este alimento?', { ok: 'Remover' }))) return
     setItens(p => p.filter(i => i.id !== id))
     setEditando(null)
     await supabase.from('food_logs').delete().eq('id', id)

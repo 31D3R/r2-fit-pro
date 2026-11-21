@@ -9,6 +9,7 @@ import EnviarParaAluno from '../components/acompanhamento/EnviarParaAluno'
 import EditorDiasSemana from '../components/treino/EditorDiasSemana'
 import { ajustesDaSemana, aplicarSemana, dataComDia, desfazerAjuste, hojeIso } from '../lib/semanaBase'
 import { entregarArquivo } from '../lib/nativo'
+import { confirmar } from '../components/Confirmacao'
 
 export default function TreinoPlanoPage() {
   const { id } = useParams<{ id: string }>()
@@ -48,7 +49,7 @@ export default function TreinoPlanoPage() {
   }, [params, treino, carregouSessoes, proximo, navigate])
 
   const excluir = async () => {
-    if (!treino || !confirm(`Excluir o plano "${treino.nome}"?`)) return
+    if (!treino || !(await confirmar(`Excluir o plano "${treino.nome}"?`, { ok: 'Excluir' }))) return
     await supabase.from('treinos').delete().eq('id', treino.id)
     navigate('/treino')
   }

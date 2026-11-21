@@ -8,6 +8,7 @@ import {
 } from '../lib/rotinaBase'
 import { ehAppNativo } from '../lib/nativo'
 import { Button, Spinner } from '../components/UI'
+import { confirmar } from '../components/Confirmacao'
 
 const CAMPO = 'w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-zinc-100 text-base focus:outline-none focus:ring-2 focus:ring-green-500 [color-scheme:dark]'
 const INTERVALOS = [1, 2, 3, 7, 14, 30]
@@ -134,8 +135,8 @@ export default function ErgogenicosPage() {
     gravar({ ...rotina!, itens: existe ? rotina!.itens.map(x => (x.id === i.id ? i : x)) : [...rotina!.itens, i] })
     setEditando(null)
   }
-  const remover = (i: ItemRotina) => {
-    if (confirm(`Remover "${i.nome}"?`)) gravar({ ...rotina!, itens: rotina!.itens.filter(x => x.id !== i.id) })
+  const remover = async (i: ItemRotina) => {
+    if (await confirmar(`Remover "${i.nome}"?`, { ok: 'Remover' })) gravar({ ...rotina!, itens: rotina!.itens.filter(x => x.id !== i.id) })
   }
   const trocarVez = (i: ItemRotina, k: number) =>
     gravar({ ...rotina!, itens: rotina!.itens.map(x => (x.id === i.id ? (vezFeita(x, k, hoje) ? desfazerVez(x, k, hoje) : marcarVez(x, k, hoje)) : x)) })

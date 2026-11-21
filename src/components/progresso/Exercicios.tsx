@@ -11,6 +11,7 @@ import { Folha } from '../nutricao/AdicionarAlimento'
 import { fmt } from '../nutricao/Graficos'
 import { useContadorTreino } from '../treino/ContadorTreino'
 import { passoTempo, type ExercicioPlano } from '../../lib/treinoModel'
+import { confirmar } from '../../components/Confirmacao'
 
 /** Séries, execução e descanso sugeridos para o contador de cada atividade (ex.: boxe 10 × 30 s / 30 s). */
 function intervaloPadrao(a: Atividade): { series: number; exec: number; desc: number } {
@@ -54,7 +55,7 @@ export default function Exercicios({ userId, data, pesoKg, somarExercicio, onMud
 
   const total = (itens ?? []).reduce((s, e) => s + e.calorias, 0)
   const remover = async (id: string) => {
-    if (!confirm('Remover este exercício?')) return
+    if (!(await confirmar('Remover este exercício?', { ok: 'Remover' }))) return
     await removerExercicio(id).catch(() => {})
     carregar()
   }

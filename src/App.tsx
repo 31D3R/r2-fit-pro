@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import Confirmacoes from './components/Confirmacao'
 import { AcessoProvider } from './context/AcessoContext'
 import { RotaPrivada, RotaPremium, RotaAdmin } from './components/Rotas'
 import PublicLayout from './components/PublicLayout'
@@ -161,6 +162,7 @@ export default function App() {
           <WelcomeSplash />
           <SincronizarApp />
           <AvisoAtualizacaoApp />
+          <Confirmacoes />
         </AcessoProvider>
       </AuthProvider>
     </BrowserRouter>

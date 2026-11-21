@@ -962,6 +962,28 @@ await t('dieta: marcar refeição como feita lança no diário de hoje e desfaz'
   await ctx.close()
 })
 
+await t('perguntas de remover/excluir são do próprio app (nada de caixa do sistema)', async () => {
+  const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', treino: 'dois' })
+  let dialogoSistema = false
+  page.on('dialog', d => { dialogoSistema = true; d.dismiss() })
+  await page.goto(BASE + '/treino/t1/dia/0')
+  await page.getByRole('button', { name: 'Mais opções' }).first().click()
+  await page.getByRole('button', { name: 'Remover', exact: true }).click()
+  const pergunta = page.getByRole('alertdialog', { name: /Remover "Supino reto com barra" deste treino\?/ })
+  await pergunta.waitFor()
+  await pergunta.getByRole('button', { name: 'Cancelar' }).click()
+  assert.equal(await pergunta.count(), 0)
+  assert.equal(page.gravacoes.filter(g => g.tabela === 'treinos').length, 0, 'cancelar não remove')
+  await page.getByRole('button', { name: 'Mais opções' }).first().click()
+  await page.getByRole('button', { name: 'Remover', exact: true }).click()
+  await pergunta.getByRole('button', { name: 'Remover' }).click()
+  for (let i = 0; i < 30 && !page.gravacoes.some(g => g.tabela === 'treinos'); i++) await page.waitForTimeout(100)
+  assert.deepEqual(page.gravacoes.filter(g => g.tabela === 'treinos').pop().corpo.plano.dias[0].exercicios.map(e => e.nome), ['Remada curvada'])
+  assert.equal(dialogoSistema, false)
+  assert.deepEqual(page.consoleErros, [])
+  await ctx.close()
+})
+
 await t('funções novas: calculadoras, jejum, lista de compras, conquistas e trocar exercício', async () => {
   const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', nutricao: true, treino: 'dois' })
   // calculadoras

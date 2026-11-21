@@ -10,6 +10,7 @@ import type { Dieta } from '../types'
 import { Button, Input, Select, Textarea, Card, Badge, Spinner } from '../components/UI'
 import { entregarArquivo } from '../lib/nativo'
 import { useRefeicoesFeitas } from '../lib/dietaDiario'
+import { avisar, confirmar } from '../components/Confirmacao'
 
 function DietMenu({ onSelect }: { onSelect: (v: 'nova' | 'contador') => void }) {
   const { user } = useAuth()
@@ -23,9 +24,9 @@ function DietMenu({ onSelect }: { onSelect: (v: 'nova' | 'contador') => void }) 
   }, [user])
 
   const excluir = async (d: Dieta) => {
-    if (!confirm(`Excluir o plano "${d.nome}"? Esta ação não pode ser desfeita.`)) return
+    if (!(await confirmar(`Excluir o plano "${d.nome}"?`, { detalhe: 'Esta ação não pode ser desfeita.', ok: 'Excluir' }))) return
     const { error } = await supabase.from('dietas').delete().eq('id', d.id)
-    if (error) { alert('Não foi possível excluir o plano.'); return }
+    if (error) { await avisar('Não foi possível excluir o plano.'); return }
     setDietas(p => p.filter(x => x.id !== d.id))
   }
 
@@ -258,7 +259,7 @@ function DietDetail({ id }: { id: string }) {
     )
   }
   const del = async () => {
-    if (!confirm('Excluir este plano?')) return
+    if (!(await confirmar('Excluir este plano?', { ok: 'Excluir' }))) return
     await supabase.from('dietas').delete().eq('id', id)
     navigate('/dieta')
   }

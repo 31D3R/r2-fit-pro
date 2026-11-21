@@ -11,6 +11,7 @@ import { Button, Input, Spinner } from '../components/UI'
 import GraficoPeso from '../components/progresso/GraficoPeso'
 import CompartilharCartao from '../components/CompartilharCartao'
 import { cartaoPeso } from '../lib/cartoesBase'
+import { confirmar } from '../components/Confirmacao'
 
 const PERIODOS = [['30', '30 dias'], ['90', '90 dias'], ['365', '1 ano'], ['tudo', 'Tudo']] as const
 const kg = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
@@ -163,7 +164,7 @@ export default function PesoPage() {
                   <span className="text-sm text-zinc-400 tabular-nums w-24">{dataBR(p.data)}</span>
                   <span className="flex-1 font-semibold tabular-nums text-zinc-100">{kg(p.peso_kg)} kg</span>
                   {dif !== null && dif !== 0 && <span className={`text-xs tabular-nums ${dif < 0 ? 'text-green-400' : 'text-amber-300'}`}>{sinal(dif)}</span>}
-                  <button onClick={async () => { if (confirm('Remover este registro?')) { await removerPeso(p.id); carregar() } }} aria-label={`Remover peso de ${dataBR(p.data)}`}
+                  <button onClick={async () => { if (await confirmar('Remover este registro de peso?', { ok: 'Remover' })) { await removerPeso(p.id); carregar() } }} aria-label={`Remover peso de ${dataBR(p.data)}`}
                     className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-zinc-800"><Trash2 className="w-4 h-4" /></button>
                 </li>
               )

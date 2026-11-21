@@ -3,6 +3,7 @@ import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
 import { recalcularDieta } from '../../lib/openai'
 import type { PlanoAlimentar, Refeicao } from '../../lib/openai'
 import { Input } from '../UI'
+import { confirmar } from '../Confirmacao'
 
 const campo = 'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent'
 const inteiro = (s: string) => Number(s.replace(/\D/g, '')) || 0
@@ -73,7 +74,7 @@ export default function EditorDieta({ plano, onChange, nome, onNome }: {
               <div className="flex gap-2">
                 <button type="button" onClick={() => mover(i, -1)} disabled={i === 0} className="p-2 rounded-lg border border-zinc-800 text-zinc-400 disabled:opacity-30" aria-label="Mover para cima"><ChevronUp className="w-4 h-4" /></button>
                 <button type="button" onClick={() => mover(i, 1)} disabled={i === plano.refeicoes.length - 1} className="p-2 rounded-lg border border-zinc-800 text-zinc-400 disabled:opacity-30" aria-label="Mover para baixo"><ChevronDown className="w-4 h-4" /></button>
-                <button type="button" onClick={() => { if (confirm(`Remover a refeição "${r.nome}"?`)) { mudar({ ...plano, refeicoes: plano.refeicoes.filter((_, j) => j !== i) }); setAberta(null) } }}
+                <button type="button" onClick={async () => { if (await confirmar(`Remover a refeição "${r.nome}"?`, { ok: 'Remover' })) { mudar({ ...plano, refeicoes: plano.refeicoes.filter((_, j) => j !== i) }); setAberta(null) } }}
                   className="ml-auto flex items-center gap-1.5 px-3 rounded-lg border border-zinc-800 text-sm text-red-400"><Trash2 className="w-4 h-4" />Remover refeição</button>
               </div>
             </div>
