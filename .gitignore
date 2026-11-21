@@ -1,6 +1,7 @@
 
 # Lasy internal
-.claude
+.claude/*
+!.claude/settings.json
 .lasy
 dist
 .env
