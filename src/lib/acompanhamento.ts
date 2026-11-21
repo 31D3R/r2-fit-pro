@@ -8,7 +8,7 @@ export type { AlunoResumo } from './acompanhamentoBase'
 
 export interface Compartilhamento { ver_treinos: boolean; ver_diario: boolean; ver_peso: boolean; editar_planos: boolean }
 export interface MeuPersonal extends Compartilhamento { id: string; personal_id: string; nome: string; cref: string | null; desde: string; nao_lidas: number }
-export interface PerfilPersonal { codigo: string; nome_exibicao: string | null; cref: string | null }
+export interface PerfilPersonal { codigo: string; nome_exibicao: string | null; cref: string | null; cref_verificado?: boolean }
 export interface Mensagem { id: string; acompanhamento_id: string; autor_id: string; tipo: 'texto' | 'treino' | 'dieta' | 'meta' | 'aviso'; texto: string; ref_id: string | null; lida_em: string | null; created_at: string }
 export interface TreinoAluno { id: string; nome: string; objetivo: string | null; nivel: string | null; frequencia_semanal: number | null; created_at: string; enviado_por_mim: boolean }
 export interface SessaoAluno { treino_nome: string | null; dia_index: number; data_inicio: string; data_fim: string | null; concluido: boolean; feito?: boolean }
@@ -34,7 +34,7 @@ const num = (v: unknown) => Number(v ?? 0)
 
 // --- Personal ---
 export async function meuPerfilPersonal(userId: string): Promise<PerfilPersonal | null> {
-  const { data } = await supabase.from('personais').select('codigo, nome_exibicao, cref').eq('user_id', userId).maybeSingle()
+  const { data } = await supabase.from('personais').select('codigo, nome_exibicao, cref, cref_verificado').eq('user_id', userId).maybeSingle()
   return (data as PerfilPersonal) ?? null
 }
 export const ativarPersonal = (nome: string | null, cref: string | null, novoCodigo = false) =>
@@ -100,3 +100,8 @@ export function useNaoLidas(ativo: boolean) {
   }, [recarregar])
   return estado
 }
+
+// --- Admin: CREF dos personais ---
+export interface PersonalAdmin { user_id: string; nome: string; email: string; cref: string | null; cref_verificado: boolean; cref_verificado_em: string | null; desde: string; alunos: number }
+export const adminPersonais = () => rpc<PersonalAdmin[]>('admin_personais')
+export const adminVerificarCref = (userId: string, ok: boolean) => rpc<null>('admin_verificar_cref', { p_user: userId, p_ok: ok })

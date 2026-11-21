@@ -297,3 +297,20 @@ Retorne APENAS JSON válido neste formato:
     return regras
   }
 }
+
+// --- Exercício que não está no catálogo: a IA descreve (busca nunca termina em "não encontrado") ---
+
+export interface ExercicioIA { nome: string; grupo: string; equipamento: string; composto: boolean; instrucoes: string }
+
+/** Nome digitado (ex.: "remada cavalinho") → grupo principal, equipamento e como fazer. null quando não parece exercício. */
+export async function exercicioPorIA(nome: string): Promise<ExercicioIA | null> {
+  const grupos = Object.values(GRUPOS).join(', ')
+  const prompt = `Você é um personal trainer. A pessoa procurou um exercício de musculação ou treino que não está no catálogo: "${nome}".
+Se for um exercício real (mesmo com nome popular, apelido ou erro de digitação), descreva-o. Se não for um exercício, responda {"existe": false}.
+Grupo principal: um destes: ${grupos}.
+Retorne APENAS JSON: { "existe": true, "nome": "nome correto em português", "grupo": "um dos grupos", "equipamento": "barra, halteres, máquina, cabo, peso corporal...", "composto": true ou false, "instrucoes": "como fazer em até 2 frases" }`
+  const r = await chatCompletion({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.2 })
+  const j = JSON.parse(r.choices[0]?.message?.content ?? '{}') as Partial<ExercicioIA> & { existe?: boolean }
+  if (!j.existe || !j.nome) return null
+  return { nome: String(j.nome).slice(0, 80), grupo: String(j.grupo ?? ''), equipamento: String(j.equipamento ?? ''), composto: !!j.composto, instrucoes: String(j.instrucoes ?? '').slice(0, 400) }
+}

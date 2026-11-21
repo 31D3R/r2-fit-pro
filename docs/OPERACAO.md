@@ -240,6 +240,31 @@ observação; marca "feito" e a próxima vira hoje + intervalo (`src/lib/rotinaB
 - Notificação tocada navega dentro do site (`window.__r2Navegar`) sem recarregar; botão voltar com confirmação no contador.
 - Plugin `ArquivosNativo.compartilhar` (PDF, imagem, exportação); avisos com grupos rotina, semana e jejum.
 
+## Sem internet, modo personal, CREF e busca com IA (desde 21/11/2026)
+
+- **Sem internet** (`src/lib/offline.ts`, lógica em `offlineBase.ts`, ligado em `src/lib/supabase.ts` como `global.fetch`):
+  - leituras do REST do Supabase ficam no aparelho (`localStorage` `r2-off-cache`, até 200 respostas de até 300 KB);
+  - sem internet, gravações nas tabelas de `TABELAS_OFFLINE` (diário, água, peso, exercícios, sessões, medidas, preferências, planos, dietas,
+    receitas, favoritos, meta) entram na fila `r2-off-fila` com id criado no aparelho, e a resposta para a tela é a mesma do servidor;
+  - a fila é aplicada por cima das leituras (a tela mostra o que foi feito) e enviada na ordem ao voltar a internet, ao abrir o app,
+    a cada 30 s e antes de sair da conta (sair apaga o que estava guardado); erro de rede para e tenta depois; recusa do servidor tira da fila;
+  - IA, pagamentos, fotos, convites e funções RPC continuam precisando de internet;
+  - o service worker (`public/sw.js`, cache `r2-app-v1`) guarda a página e os arquivos do app para abrir sem internet
+    (rede primeiro nas páginas; /assets, /icons, /audio e /animacoes ficam guardados ao usar);
+  - faixa "Sem internet… / Sincronizando…" no topo (`SemInternet.tsx`).
+- **Modo personal** (`src/lib/modoApp.ts`): na primeira vez o Início pergunta "Para o meu treino e dieta / Sou personal trainer"
+  (fica no aparelho e em `preferencias.modo_app`). No modo personal: faixa roxa "Painel do personal" (tocar volta ao modo normal),
+  selo "Personal" no topo, primeira aba "Alunos" e o Início vira o painel (alunos + convite + CREF). Troca também pelo Menu.
+- **CREF obrigatório** (migração `20261121120000_personal_cref.sql`, aplicada): `acomp_ativar_personal` exige CREF no formato
+  000000-G/UF (normaliza "CREF 12345 g sp"); mudar o CREF tira a verificação. O CONFEF não tem consulta automática: admin → aba
+  "Personais (CREF)" abre a consulta do CONFEF e marca como verificado (`admin_personais`, `admin_verificar_cref`).
+  O personal vê "aguardando verificação" ou "✓ verificado".
+- **Busca sem "não encontrado"**: alimento sem resultado na tabela/Open Food Facts → a IA calcula sozinha (gpt-4o-mini), aparece na lista
+  e fica salvo na tabela compartilhada; exercício fora do catálogo → `exercicioPorIA` reconhece (apelido, erro de digitação) e aparece na lista.
+  "Não encontrado" só quando a IA diz que não existe.
+- **Perguntas** do app (`components/Confirmacao.tsx`, `confirmar()`/`avisar()`) no lugar de `window.confirm/alert`; o voltar do Android fecha.
+- **App Android 1.9.1 (código 12)**: lembretes com ícone de sino (o cronômetro fica só para o contador).
+
 ## Ideias anotadas para fazer depois
 
 - (nenhuma no momento)

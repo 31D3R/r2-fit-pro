@@ -41,6 +41,9 @@ export default function BuscaAlimentos({ q, onAbrir, onAdicionarRapido }: {
   const [erro, setErro] = useState('')
   const fotoRotulo = useRef<HTMLInputElement>(null)
   const termo = q.trim()
+  // Nada na tabela nem nos produtos: a IA calcula sozinha e o resultado aparece na lista (e fica salvo na tabela)
+  const [daIA, setDaIA] = useState<{ termo: string; item: ItemBase | null; estado: 'buscando' | 'ok' | 'falhou' } | null>(null)
+  const tentados = useRef(new Map<string, ItemBase | null>())
 
   useEffect(() => { carregarTaco().then(setTaco) }, [])
 
@@ -70,6 +73,26 @@ export default function BuscaAlimentos({ q, onAbrir, onAdicionarRapido }: {
     }
     return lista
   }, [termo, taco, banco, produtos])
+
+  const semResultado = !!termo && termo.length >= 3 && taco !== null && !buscandoProdutos && resultados.length === 0
+  useEffect(() => {
+    if (!semResultado) return
+    const chave = semAcento(termo)
+    if (tentados.current.has(chave)) { const item = tentados.current.get(chave)!; setDaIA({ termo, item, estado: item ? 'ok' : 'falhou' }); return }
+    let vivo = true
+    setDaIA({ termo, item: null, estado: 'buscando' })
+    // espera a pessoa parar de digitar
+    const t = setTimeout(() => {
+      estimarAlimentoBase(termo).then(async e => {
+        const base = deEstimativa(e, 'ia')
+        const item = await guardar(base, base).catch(() => base)
+        tentados.current.set(chave, item)
+        if (vivo) setDaIA({ termo, item, estado: 'ok' })
+      }).catch(() => { tentados.current.set(chave, null); if (vivo) setDaIA({ termo, item: null, estado: 'falhou' }) })
+    }, 700)
+    return () => { vivo = false; clearTimeout(t) }
+  }, [semResultado, termo])
+  const listaFinal = semResultado && daIA?.termo === termo && daIA.item ? [daIA.item] : resultados
 
   const lerCodigo = async (c: string) => {
     setLeitor(false); setErro('')
@@ -141,7 +164,7 @@ export default function BuscaAlimentos({ q, onAbrir, onAdicionarRapido }: {
           <p className="text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 px-1 flex items-center gap-1.5"><Database className="w-3.5 h-3.5" />Tabela de alimentos</p>
           {taco === null ? <div className="flex justify-center py-6"><Spinner /></div> : (
             <ul className="flex flex-col gap-2">
-              {resultados.map((item, idx) => {
+              {listaFinal.map((item, idx) => {
                 const m = medidasDe(item)[0]
                 const porcao = paraAlimento(item, m)
                 return (
@@ -161,14 +184,15 @@ export default function BuscaAlimentos({ q, onAbrir, onAdicionarRapido }: {
                 )
               })}
               {buscandoProdutos && <li className="flex items-center gap-2 text-xs text-zinc-500 px-1 py-1"><Spinner size="sm" />Procurando produtos industrializados…</li>}
-              {!buscandoProdutos && resultados.length === 0 && <li className="text-sm text-zinc-400 px-1 py-2">Nada encontrado na tabela para "{termo}".</li>}
+              {semResultado && daIA?.termo === termo && daIA.estado === 'buscando' && <li className="flex items-center gap-2 text-xs text-zinc-500 px-1 py-1"><Spinner size="sm" />Procurando "{termo}"…</li>}
+              {semResultado && termo.length >= 3 && daIA?.termo === termo && daIA.estado === 'falhou' && <li className="text-sm text-zinc-400 px-1 py-2">Não deu para calcular "{termo}" agora. Confira a internet ou tente outro nome.</li>}
+              {!buscandoProdutos && resultados.length === 0 && termo.length < 3 && <li className="text-sm text-zinc-400 px-1 py-2">Digite pelo menos 3 letras.</li>}
               <li>
-                <button type="button" onClick={calcularComIA} disabled={trabalhando === 'ia'}
+                {listaFinal.length > 0 && <button type="button" onClick={calcularComIA} disabled={trabalhando === 'ia'}
                   className="w-full flex items-center gap-2 justify-center rounded-2xl border border-dashed border-zinc-700 py-3 text-sm font-semibold text-green-400 hover:border-green-500/50 disabled:opacity-60">
                   {trabalhando === 'ia' ? <Spinner size="sm" /> : <Sparkles className="w-4 h-4" />}
-                  {resultados.length ? 'Não achou? ' : ''}Calcular "{termo}" com IA
-                </button>
-                <p className="text-[11px] text-zinc-500 text-center mt-1.5">O alimento calculado fica salvo na tabela para as próximas buscas.</p>
+                  Não é esse? Calcular "{termo}" com IA
+                </button>}
               </li>
             </ul>
           )}

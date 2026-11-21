@@ -181,6 +181,32 @@ export default function ExercicioPicker({ gruposDoTreino, equipamentos, onAdicio
   const escolher = (c: ExercicioCatalogo) => mod && setSelecionado(exercicioDoCatalogo(c, mod.GRUPOS))
   const cardios = useMemo(() => (q.trim() ? buscarCardio(q) : CARDIO), [q])
 
+  // Nada no catálogo: a IA reconhece o exercício (apelido, nome popular, erro de digitação) e ele aparece na lista
+  const termo = q.trim()
+  const semResultado = estado === 'pronto' && termo.length >= 3 && resultados.length === 0 && !cardios.length
+  const [daIA, setDaIA] = useState<{ termo: string; ex: ExercicioPlano | null; estado: 'buscando' | 'ok' | 'nao' } | null>(null)
+  const tentados = useRef(new Map<string, ExercicioPlano | null>())
+  useEffect(() => {
+    if (!semResultado) return
+    const chave = termo.toLowerCase()
+    if (tentados.current.has(chave)) { const ex = tentados.current.get(chave)!; setDaIA({ termo, ex, estado: ex ? 'ok' : 'nao' }); return }
+    let vivo = true
+    setDaIA({ termo, ex: null, estado: 'buscando' })
+    const t = setTimeout(() => {
+      import('../../lib/openai').then(m => m.exercicioPorIA(termo)).then(r => {
+        const ex: ExercicioPlano | null = r ? {
+          id: uid('e'), nome: r.nome, grupos_musculares: r.grupo ? [r.grupo] : [], equipamento: r.equipamento || undefined,
+          series: r.composto ? 4 : 3, repeticoes: r.composto ? '8-10' : '10-12', tempo_execucao_segundos: r.composto ? 40 : 35,
+          tempo_descanso_segundos: r.composto ? 90 : 60, instrucoes: r.instrucoes || undefined,
+        } : null
+        tentados.current.set(chave, ex)
+        if (vivo) setDaIA({ termo, ex, estado: ex ? 'ok' : 'nao' })
+      }).catch(() => { if (vivo) setDaIA({ termo, ex: null, estado: 'nao' }) })
+    }, 700)
+    return () => { vivo = false; clearTimeout(t) }
+  }, [semResultado, termo])
+  const iaAtual = semResultado && daIA?.termo === termo ? daIA : null
+
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center" onClick={onFechar}>
       <div className="bg-zinc-950 border border-zinc-800 w-full max-w-lg h-[92dvh] sm:h-[85vh] rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)]"
@@ -263,7 +289,21 @@ export default function ExercicioPicker({ gruposDoTreino, equipamentos, onAdicio
                   ))}
                 </ul>
               )}
-              {estado === 'pronto' && resultados.length === 0 && !(q.trim() && cardios.length) && (
+              {iaAtual?.estado === 'buscando' && <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-8"><Spinner size="sm" />Procurando "{termo}"…</p>}
+              {iaAtual?.estado === 'ok' && iaAtual.ex && (
+                <ul className="divide-y divide-zinc-800/70">
+                  <li>
+                    <button onClick={() => setSelecionado(iaAtual.ex)} className="w-full text-left px-4 py-3 hover:bg-zinc-900 active:bg-zinc-900 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-zinc-100 font-medium truncate">{iaAtual.ex.nome}</p>
+                        <p className="text-xs text-zinc-500 mt-0.5 truncate"><span className="text-green-400/90">{iaAtual.ex.grupos_musculares[0] ?? 'Exercício'}</span>{iaAtual.ex.equipamento ? ` · ${iaAtual.ex.equipamento}` : ''}</p>
+                      </div>
+                      <span className="w-8 h-8 rounded-lg bg-green-500/15 text-green-400 flex items-center justify-center text-lg shrink-0">+</span>
+                    </button>
+                  </li>
+                </ul>
+              )}
+              {estado === 'pronto' && resultados.length === 0 && !(q.trim() && cardios.length) && (!semResultado || iaAtual?.estado === 'nao') && (
                 <div className="text-center py-10 px-6">
                   <p className="text-zinc-300 font-semibold">Nenhum exercício encontrado para "{q}"</p>
                   <p className="text-sm text-zinc-500 mt-1">

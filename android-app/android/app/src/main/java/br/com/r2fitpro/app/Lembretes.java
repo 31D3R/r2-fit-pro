@@ -142,7 +142,7 @@ public final class Lembretes {
         PendingIntent pi = PendingIntent.getActivity(c, id, abrir, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         nm.notify(1000 + Math.abs(id % 100000), new NotificationCompat.Builder(c, CANAL)
-            .setSmallIcon(R.drawable.ic_stat_contador)
+            .setSmallIcon(R.drawable.ic_stat_lembrete)
             .setContentTitle(titulo)
             .setContentText(corpo)
             .setStyle(new NotificationCompat.BigTextStyle().bigText(corpo))

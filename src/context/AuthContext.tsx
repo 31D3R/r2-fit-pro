@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { limparOffline, sincronizar } from '../lib/offline'
 
 interface AuthContextValue {
   user: User | null
@@ -39,7 +40,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = async () => {
+    // envia o que foi registrado sem internet antes de sair; depois apaga o que estava guardado no aparelho
+    await sincronizar().catch(() => {})
     await supabase.auth.signOut()
+    limparOffline()
   }
 
   return (

@@ -6,10 +6,11 @@ import Usuarios from './Usuarios'
 import { Assinaturas, Pagamentos } from './Financeiro'
 import { Integracoes, Suporte, Privacidade, Auditoria } from './Operacao'
 import Configuracao from './Configuracao'
+import Personais from './Personais'
 
 const ABAS = [
   ['geral', 'Visão geral', VisaoGeral], ['usuarios', 'Usuários', Usuarios], ['assinaturas', 'Assinaturas', Assinaturas],
-  ['pagamentos', 'Pagamentos', Pagamentos], ['integracoes', 'Integrações e erros', Integracoes], ['suporte', 'Suporte', Suporte],
+  ['pagamentos', 'Pagamentos', Pagamentos], ['personais', 'Personais (CREF)', Personais], ['integracoes', 'Integrações e erros', Integracoes], ['suporte', 'Suporte', Suporte],
   ['privacidade', 'LGPD', Privacidade], ['config', 'Plano e empresa', Configuracao], ['auditoria', 'Auditoria', Auditoria],
 ] as const
 

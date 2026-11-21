@@ -16,6 +16,10 @@ import { listaDeCompras } from '../src/lib/comprasBase'
 import { alimentosDaRefeicao, refeicaoDoDiario } from '../src/lib/dietaDiarioBase'
 import { DocPdf, winAnsi } from '../src/lib/pdfSimples'
 
+import { normalizarCref } from '../src/lib/crefBase'
+
+import { aplicarOp, combina, prepararOp, respostaDaFila } from '../src/lib/offlineBase'
+
 let ok = 0
 const t = (n: string, f: () => void | Promise<void>) => Promise.resolve(f()).then(() => { ok++; console.log('✓', n) })
 
@@ -560,5 +564,32 @@ await t('treino perdido: duas sessões no mesmo dia são vagas diferentes (sem v
   const extras = div.plano.extras!
   assert.equal(extras.length, 2, 'cada exercício do treino perdido entra uma vez só')
   assert.equal(div.destinos.reduce((t, d) => t + d.exercicios.length, 0), 2)
+})
+await t('CREF: aceita os jeitos comuns de escrever e recusa formato errado', () => {
+  assert.equal(normalizarCref('CREF 12345-G/SP'), '012345-G/SP'); assert.equal(normalizarCref('012345 g sp'), '012345-G/SP')
+  assert.equal(normalizarCref('123456-P/MG'), '123456-P/MG'); assert.equal(normalizarCref('012345G/SP'), '012345-G/SP')
+  assert.equal(normalizarCref('12345-X/SP'), null); assert.equal(normalizarCref('123-G/ZZ'), null); assert.equal(normalizarCref(''), null)
+})
+await t('sem internet: filtros, fila por cima das leituras guardadas e resposta como a do servidor', () => {
+  assert.ok(combina({ user_id: 'u', data: '2026-11-20' }, '/rest/v1/food_logs?select=*&user_id=eq.u&data=eq.2026-11-20'))
+  assert.ok(!combina({ user_id: 'u', data: '2026-11-19' }, '/rest/v1/food_logs?user_id=eq.u&data=eq.2026-11-20'))
+  assert.ok(combina({ data: '2026-11-15' }, '/rest/v1/registros_peso?data=gte.2026-11-01&data=lt.2026-11-20'))
+  assert.ok(combina({ origem: 'dieta:d1:2' }, '/rest/v1/food_logs?origem=like.dieta%3Ad1%3A%25'))
+  const ins = prepararOp({ id: 'o1', metodo: 'POST', url: '/rest/v1/food_logs', corpo: [{ user_id: 'u', data: '2026-11-20', nome: 'Ovo' }], cabecalhos: {}, em: 0 }, () => 'novo')
+  assert.equal((ins.corpo as { id: string }[])[0].id, 'novo')
+  const leitura = '/rest/v1/food_logs?user_id=eq.u&data=eq.2026-11-20'
+  const base = [{ id: 'a', user_id: 'u', data: '2026-11-20', nome: 'Pão' }]
+  let d = aplicarOp(leitura, base, ins) as { id: string; nome: string }[]
+  assert.deepEqual(d.map(x => x.nome), ['Pão', 'Ovo'])
+  assert.deepEqual((aplicarOp('/rest/v1/food_logs?user_id=eq.u&data=eq.2026-11-19', base, ins) as unknown[]).length, 1, 'outro dia não muda')
+  d = aplicarOp(leitura, d, { id: 'o2', metodo: 'PATCH', url: '/rest/v1/food_logs?id=eq.novo', corpo: { nome: 'Ovo cozido' }, cabecalhos: {}, em: 0 }) as typeof d
+  assert.equal(d[1].nome, 'Ovo cozido')
+  d = aplicarOp(leitura, d, { id: 'o3', metodo: 'DELETE', url: '/rest/v1/food_logs?id=eq.a', corpo: null, cabecalhos: {}, em: 0 }) as typeof d
+  assert.deepEqual(d.map(x => x.id), ['novo'])
+  // upsert (preferências) troca a linha em vez de duplicar
+  const up = { id: 'o4', metodo: 'POST' as const, url: '/rest/v1/user_settings?on_conflict=user_id', corpo: { user_id: 'u', preferencias: { jejum: 1 } }, cabecalhos: { Prefer: 'resolution=merge-duplicates' }, em: 0 }
+  assert.deepEqual(aplicarOp('/rest/v1/user_settings?select=preferencias&user_id=eq.u', [{ user_id: 'u', preferencias: {} }], up), [{ user_id: 'u', preferencias: { jejum: 1 } }])
+  assert.deepEqual(respostaDaFila({ ...ins, cabecalhos: { Prefer: 'return=representation', Accept: 'application/vnd.pgrst.object+json' } }).corpo, (ins.corpo as unknown[])[0])
+  assert.equal(respostaDaFila(ins).status, 201)
 })
 console.log(`\n${ok} testes passaram`)

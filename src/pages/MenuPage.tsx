@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  Home, Dumbbell, Salad, Flame, User, Settings, CreditCard, Receipt, LifeBuoy, FileText, Shield, Info, LogOut, LayoutDashboard, ChevronRight, Sparkles, Target, Scale, ChefHat, BarChart3, Bell, UserCheck, Users, HeartHandshake, Ruler, Trophy, Timer, Calculator,
+  Home, Dumbbell, Salad, Flame, User, Settings, CreditCard, Receipt, LifeBuoy, FileText, Shield, Info, LogOut, LayoutDashboard, ChevronRight, Sparkles, Target, Scale, ChefHat, BarChart3, Bell, UserCheck, Users, HeartHandshake, Ruler, Trophy, Timer, Calculator, Briefcase,
 } from 'lucide-react'
+import { definirModo, useModoApp } from '../lib/modoApp'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useAcesso } from '../context/AcessoContext'
@@ -55,6 +56,7 @@ export default function MenuPage() {
   const plano = config?.plano
   const naoLidas = useNaoLidas(!!user)
   const pedidos = usePedidosAmizade(!!user)
+  const modo = useModoApp(user?.id)
   const grupos = GRUPOS.map(g => g.titulo !== 'App' ? g : {
     ...g,
     itens: [
@@ -74,6 +76,10 @@ export default function MenuPage() {
         <p className="font-semibold truncate">{user?.user_metadata?.nome ?? user?.email}</p>
         <p className="text-sm text-zinc-500 truncate">{user?.email}</p>
         <Link to="/assinatura" className="inline-block mt-2"><Badge variant={rotulo.cor}>{rotulo.texto}</Badge></Link>
+        <button type="button" onClick={() => { definirModo(modo === 'personal' ? 'aluno' : 'personal', user?.id); navigate('/dashboard') }}
+          className={`mt-3 w-full flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold border ${modo === 'personal' ? 'bg-zinc-800 border-zinc-700 text-zinc-200' : 'bg-violet-500/10 border-violet-500/30 text-violet-200'}`}>
+          <Briefcase className="w-4 h-4" />{modo === 'personal' ? 'Voltar ao modo normal' : 'Entrar no painel do personal'}
+        </button>
         {semAcesso && (
           <Link to="/assinatura"
             className="mt-4 flex items-center gap-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-400 px-4 py-3.5 text-zinc-950 shadow-lg shadow-green-500/20 transition-transform active:scale-[0.98]">

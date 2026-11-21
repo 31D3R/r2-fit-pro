@@ -90,12 +90,13 @@ let ok = 0
 const erros = []
 const t = async (nome, f) => { try { await f(); ok++; console.log('✓', nome) } catch (e) { erros.push(nome); console.log('✗', nome, '\n   ', e.message.split('\n')[0]) } }
 
-async function contexto(browser, { logado = false, estado = 'sem_assinatura', admin = false, acessoFalha = false, pagamentos = false, checkoutFalha = false, asaas = false, nutricao = false, treino = false, personal = false, amigos = false, renovacao = false, rotinaInicial = null, userAgent, instalado = Boolean(userAgent), viewport = { width: 390, height: 844 } } = {}) {
+async function contexto(browser, { logado = false, estado = 'sem_assinatura', admin = false, acessoFalha = false, pagamentos = false, checkoutFalha = false, asaas = false, nutricao = false, treino = false, personal = false, amigos = false, renovacao = false, rotinaInicial = null, userAgent, instalado = Boolean(userAgent), viewport = { width: 390, height: 844 }, comServiceWorker = false } = {}) {
   const chamadasBilling = []
   const gravacoes = []
   let sessaoE2e = null
   let preferenciasE2e = rotinaInicial ? { rotina: rotinaInicial } : {}
-  const ctx = await browser.newContext({ viewport, ...(userAgent ? { userAgent } : {}) })
+  // service worker bloqueado nos testes: as respostas simuladas vêm sempre das rotas abaixo
+  const ctx = await browser.newContext({ viewport, serviceWorkers: comServiceWorker ? 'allow' : 'block', ...(userAgent ? { userAgent } : {}) })
   await ctx.addInitScript(([s, logado, instalado]) => {
     sessionStorage.setItem('r2fit:welcome-visto', '1')
     if (logado) localStorage.setItem('sb-mock-auth-token', JSON.stringify(s))
@@ -146,8 +147,8 @@ async function contexto(browser, { logado = false, estado = 'sem_assinatura', ad
         ? [{ id: 'v9', personal_id: 'pp', nome: 'Rafa Personal', cref: '123456-G/MG', desde: new Date().toISOString(), ver_treinos: true, ver_diario: true, ver_peso: false, editar_planos: true, nao_lidas: 0 }] : [])
       if (p === '/rest/v1/rpc/acomp_ver_convite') { grava('acomp_ver_convite'); return json({ nome: 'Rafa Personal', cref: '123456-G/MG', proprio: false, ja_vinculado: false }) }
       if (p === '/rest/v1/rpc/acomp_aceitar') { grava('acomp_aceitar'); return json('v9') }
-      if (p === '/rest/v1/personais') return json(gravacoes.some(g => g.tabela === 'acomp_ativar_personal') ? [{ codigo: 'K7P2QX', nome_exibicao: 'Cliente Teste', cref: null }] : [])
-      if (p === '/rest/v1/rpc/acomp_ativar_personal') { grava('acomp_ativar_personal'); return json({ codigo: 'K7P2QX', nome_exibicao: 'Cliente Teste', cref: null }) }
+      if (p === '/rest/v1/personais') return json(gravacoes.some(g => g.tabela === 'acomp_ativar_personal') ? [{ codigo: 'K7P2QX', nome_exibicao: 'Cliente Teste', cref: '012345-G/SP', cref_verificado: false }] : [])
+      if (p === '/rest/v1/rpc/acomp_ativar_personal') { grava('acomp_ativar_personal'); return json({ codigo: 'K7P2QX', nome_exibicao: 'Cliente Teste', cref: rota.request().postDataJSON().p_cref ?? '012345-G/SP', cref_verificado: false }) }
       if (p === '/rest/v1/rpc/acomp_meus_alunos') return json(ALUNOS)
       if (p === '/rest/v1/rpc/acomp_dados_aluno') return json(DADOS_ALUNO)
       if (p === '/rest/v1/acomp_mensagens') return json([...MENSAGENS].reverse())
@@ -632,9 +633,9 @@ await t('busca: TACO com medidas caseiras, produto industrializado e cálculo pe
   await folha.getByPlaceholder(/Buscar alimento/).fill('whey')
   await folha.getByText('Whey Protein Baunilha').waitFor({ timeout: 5000 })
   await page.screenshot({ path: `${SHOTS}/busca-resultados.png` })
-  // Não está em lugar nenhum: a IA calcula e o alimento vai para o banco compartilhado
+  // Não está em lugar nenhum: a IA calcula sozinha (sem "não encontrado"), aparece na lista e vai para o banco compartilhado
   await folha.getByPlaceholder(/Buscar alimento/).fill('açaí na tigela com granola')
-  await folha.getByRole('button', { name: /Calcular "açaí na tigela com granola" com IA/ }).click()
+  await folha.getByRole('button', { name: /^Açaí na tigela com granola/ }).click({ timeout: 8000 })
   await folha.getByRole('button', { name: /tigela \(300 g\)/ }).waitFor()
   await folha.getByText('420').first().waitFor() // 140 kcal/100 g × 300 g
   const salvo = page.gravacoes.find(x => x.tabela === 'alimentos_base')
@@ -947,6 +948,30 @@ await t('treino perdido: planejamento da divisão, confirmar, desfazer, encaixar
   await ctx.close()
 })
 
+await t('sem internet: o que foi registrado fica no celular, aparece na tela e sincroniza ao voltar a internet', async () => {
+  const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', nutricao: true })
+  await page.goto(BASE + '/dieta/d1')
+  await page.getByRole('button', { name: 'Marcar Almoço como feito' }).waitFor()
+  await ctx.setOffline(true)
+  await page.getByRole('status').filter({ hasText: /Sem internet/ }).waitFor()
+  await page.getByRole('button', { name: 'Marcar Almoço como feito' }).click()
+  await page.getByText('✓ Feito · lançado no diário de hoje').waitFor()
+  assert.equal(page.gravacoes.filter(g => g.tabela === 'food_logs' && g.metodo === 'POST').length, 0, 'sem internet não chegou ao servidor')
+  const fila = await page.evaluate(() => JSON.parse(localStorage.getItem('r2-off-fila') || '[]'))
+  assert.equal(fila.length, 1); assert.equal(fila[0].corpo[0].nome, 'Frango grelhado'); assert.ok(fila[0].corpo[0].id, 'ganhou um id no celular')
+  await page.screenshot({ path: `${SHOTS}/sem-internet.png` })
+  // voltou a internet: envia sozinho, com o mesmo conteúdo
+  await ctx.setOffline(false)
+  await page.evaluate(() => window.dispatchEvent(new Event('online')))
+  for (let i = 0; i < 50 && !page.gravacoes.some(g => g.tabela === 'food_logs' && g.metodo === 'POST'); i++) await page.waitForTimeout(100)
+  const enviado = page.gravacoes.filter(g => g.tabela === 'food_logs' && g.metodo === 'POST').pop()
+  assert.equal(enviado?.corpo?.[0]?.nome, 'Frango grelhado'); assert.equal(enviado?.corpo?.[0]?.id, fila[0].corpo[0].id)
+  for (let i = 0; i < 30 && (await page.evaluate(() => JSON.parse(localStorage.getItem('r2-off-fila') || '[]').length)); i++) await page.waitForTimeout(100)
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('r2-off-fila') || '[]').length), 0, 'fila vazia depois de sincronizar')
+  assert.deepEqual(page.consoleErros.filter(e => !/Failed to fetch|ERR_INTERNET_DISCONNECTED|net::/.test(e)), [])
+  await ctx.close()
+})
+
 await t('dieta: marcar refeição como feita lança no diário de hoje e desfaz', async () => {
   const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', nutricao: true })
   await page.goto(BASE + '/dieta/d1')
@@ -1148,7 +1173,7 @@ await t('lembretes no app Android: alarmes do celular em vez do Web Push', async
 })
 
 await t('lembretes: ativar notificações, teste e salvar horários', async () => {
-  const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', nutricao: true })
+  const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', nutricao: true, comServiceWorker: true })
   await ctx.grantPermissions(['notifications'], { origin: BASE })
   // Serviço de notificações simulado (o navegador de teste não fala com o FCM)
   await page.addInitScript(() => {
@@ -1502,17 +1527,17 @@ await t('contador pode ser desligado ao lado do volume: some o ▶, o treino com
   const chave = page.getByRole('switch', { name: 'Usar o contador' })
   await chave.waitFor()
   assert.equal(await page.getByRole('button', { name: 'Iniciar', exact: true }).count(), 2)
-  await page.getByRole('button', { name: /Treino completo · 2 exercícios/ }).waitFor()
+  await page.getByRole('button', { name: /Iniciar contador do treino completo/ }).waitFor()
   await chave.click()
   await page.getByText('sem contador', { exact: false }).first().waitFor()
   assert.equal(await page.getByRole('button', { name: 'Iniciar', exact: true }).count(), 0, 'sem ▶ com o contador desligado')
-  await page.getByRole('button', { name: /Treino completo · 2 exercícios/ }).waitFor() // treino completo não sai
+  await page.getByRole('button', { name: /Iniciar contador do treino completo/ }).waitFor() // treino completo não sai
   assert.equal(await page.getByRole('switch', { name: 'Concluído' }).count(), 2, 'a chave Concluído continua')
   await page.screenshot({ path: `${SHOTS}/sem-contador.png`, fullPage: true })
   for (let i = 0; i < 30 && !page.gravacoes.some(g => g.tabela === 'user_settings'); i++) await page.waitForTimeout(100)
   assert.equal(page.gravacoes.filter(g => g.tabela === 'user_settings').pop()?.corpo.audio.contador, false, 'preferência salva')
   await page.getByRole('switch', { name: 'Usar o contador' }).click()
-  await page.getByRole('button', { name: /Treino completo · 2 exercícios/ }).waitFor()
+  await page.getByRole('button', { name: /Iniciar contador do treino completo/ }).waitFor()
   assert.deepEqual(page.consoleErros, [])
   await ctx.close()
 })
@@ -1618,7 +1643,7 @@ await t('treino completo: faz os exercícios em sequência, anuncia o próximo p
   await page.getByRole('button', { name: 'Fechar execução' }).click()
   await mini.waitFor()
   await page.screenshot({ path: `${SHOTS}/treino-dia.png`, fullPage: true })
-  await page.getByRole('button', { name: /Treino completo · 2 exercícios/ }).click()
+  await page.getByRole('button', { name: /Iniciar contador do treino completo/ }).click()
   await page.getByText('Exercício 1 de 2 · Supino reto com barra').waitFor()
   await page.screenshot({ path: `${SHOTS}/treino-completo.png` })
   // 1º: 3 contagens (18) + anúncio "próximo" + nome (2) + 2º: 1 contagem (6) + aviso final (1)
@@ -1741,6 +1766,14 @@ await t('personal: ativa o modo personal, vê alunos com alertas e acompanha um 
   const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', personal: true })
   await page.goto(BASE + '/personal')
   await page.getByLabel('Nome que o aluno vai ver').fill('Rafa Personal')
+  // CREF é obrigatório e conferido no formato
+  await page.getByRole('button', { name: 'Ativar modo personal' }).click()
+  await page.getByText('Informe o seu CREF.').waitFor()
+  await page.getByLabel('CREF').fill('12345-X/SP')
+  await page.getByRole('button', { name: 'Ativar modo personal' }).click()
+  await page.getByText(/CREF inválido/).waitFor()
+  assert.equal(page.gravacoes.filter(g => g.tabela === 'acomp_ativar_personal').length, 0)
+  await page.getByLabel('CREF').fill('cref 12345 g sp')
   await page.getByRole('button', { name: 'Ativar modo personal' }).click()
   // Boas-vindas com os descontos e o passo a passo
   await page.getByRole('dialog', { name: /Modo personal ativado/ }).waitFor()
@@ -1750,6 +1783,10 @@ await t('personal: ativa o modo personal, vê alunos com alertas e acompanha um 
   await page.getByTestId('codigo-personal').filter({ hasText: 'K7P2QX' }).waitFor()
   await page.getByText(/\/convite\/K7P2QX/).waitFor()
   assert.equal(page.gravacoes.find(g => g.tabela === 'acomp_ativar_personal').corpo.p_nome, 'Rafa Personal')
+  assert.equal(page.gravacoes.find(g => g.tabela === 'acomp_ativar_personal').corpo.p_cref, '012345-G/SP')
+  await page.getByText('aguardando verificação').waitFor()
+  // ativou: o app entra no painel do personal (faixa no topo; tocar volta ao modo normal)
+  await page.getByRole('button', { name: /Painel do personal: tocar para voltar ao modo normal/ }).waitFor()
   await page.getByRole('link', { name: /Meus alunos/ }).click()
   await page.getByText('Bia Souza').waitFor()
   await page.getByText('Não treina há 6 dias').waitFor()

@@ -14,6 +14,8 @@ import Conversa from '../components/acompanhamento/Conversa'
 import Compartilhar from '../components/acompanhamento/Compartilhar'
 import BoasVindasPersonal from '../components/acompanhamento/BoasVindasPersonal'
 import { useConfig } from '../lib/config'
+import { normalizarCref } from '../lib/crefBase'
+import { definirModo } from '../lib/modoApp'
 
 const TUDO: Compartilhamento = { ver_treinos: true, ver_diario: true, ver_peso: true, editar_planos: true }
 const erroDe = (e: unknown) => (e instanceof Error ? e.message : 'Algo deu errado. Tente novamente.')
@@ -133,7 +135,7 @@ function CartaoPersonal({ p, meuId, aoMudar }: { p: MeuPersonal; meuId: string; 
 }
 
 /** Modo personal: ativar, código e link de convite. */
-function ModoPersonal({ userId, nomePadrao }: { userId: string; nomePadrao: string }) {
+export function ModoPersonal({ userId, nomePadrao }: { userId: string; nomePadrao: string }) {
   const { premium } = useAcesso()
   const [perfil, setPerfil] = useState<PerfilPersonal | null | undefined>(undefined)
   const [nome, setNome] = useState(nomePadrao)
@@ -149,10 +151,15 @@ function ModoPersonal({ userId, nomePadrao }: { userId: string; nomePadrao: stri
   useEffect(() => { if (perfil) meuDesconto().then(setDesconto).catch(() => setDesconto(null)) }, [perfil])
 
   const ativar = async (novoCodigo = false) => {
-    setOcupado(true); setErro(''); setAviso('')
+    setErro(''); setAviso('')
+    // CREF obrigatório para ativar (e para quem ativou antes sem ele)
+    const precisaCref = !perfil || !perfil.cref
+    const crefOk = precisaCref ? normalizarCref(cref) : null
+    if (precisaCref && !crefOk) { setErro(cref.trim() ? 'CREF inválido. Use o formato 000000-G/UF (número, G ou P e o estado).' : 'Informe o seu CREF.'); return }
+    setOcupado(true)
     try {
-      const p = await ativarPersonal(perfil ? null : nome, perfil ? null : cref, novoCodigo)
-      if (!perfil) setBoasVindas(true)
+      const p = await ativarPersonal(perfil ? null : nome, crefOk, novoCodigo)
+      if (!perfil) { setBoasVindas(true); definirModo('personal', userId) }
       setPerfil(p)
       if (novoCodigo) setAviso('Código novo gerado. O antigo não funciona mais; quem já é seu aluno continua.')
     } catch (e) { setErro(erroDe(e)) } finally { setOcupado(false) }
@@ -179,12 +186,21 @@ function ModoPersonal({ userId, nomePadrao }: { userId: string; nomePadrao: stri
           <>
             <p className="text-sm text-zinc-400">Ative o modo personal para receber um código de convite. Cada aluno escolhe o que compartilha com você. Cada aluno que assina o Premium tira 20% da sua mensalidade, e com 5 você não paga nada.</p>
             <Input label="Nome que o aluno vai ver" value={nome} onChange={e => setNome(e.target.value)} maxLength={80} />
-            <Input label="CREF (opcional)" value={cref} onChange={e => setCref(e.target.value)} maxLength={30} placeholder="000000-G/UF" />
+            <Input label="CREF" value={cref} onChange={e => setCref(e.target.value)} maxLength={30} placeholder="000000-G/UF" hint="Obrigatório. Conferimos no CONFEF antes de mostrar como verificado." />
             <Button loading={ocupado} onClick={() => ativar()}>Ativar modo personal</Button>
           </>
         )
       ) : (
         <>
+          {!perfil.cref ? (
+            <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 flex flex-col gap-2">
+              <p className="text-sm text-amber-200">Agora o CREF é obrigatório para atender alunos pelo app.</p>
+              <Input label="CREF" value={cref} onChange={e => setCref(e.target.value)} maxLength={30} placeholder="000000-G/UF" />
+              <Button loading={ocupado} onClick={() => ativar()}>Salvar CREF</Button>
+            </div>
+          ) : (
+            <p className="text-xs text-zinc-400">CREF {perfil.cref} · {perfil.cref_verificado ? <span className="text-green-400">✓ verificado</span> : <span className="text-amber-300">aguardando verificação</span>}</p>
+          )}
           <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-4 text-center">
             <p className="text-xs text-zinc-500">Seu código de convite</p>
             <p className="text-3xl font-mono font-bold tracking-[0.3em] text-green-400 mt-1" data-testid="codigo-personal">{perfil.codigo}</p>

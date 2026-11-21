@@ -28,6 +28,10 @@ import { resumoPeso } from '../lib/exercicios'
 import type { PontoPeso } from '../lib/exercicios'
 import { somarDias } from '../lib/diario'
 import { Flame, Scale, BarChart3 } from 'lucide-react'
+import EscolhaModo from '../components/EscolhaModo'
+import { useModoApp } from '../lib/modoApp'
+import { ModoPersonal } from './PersonalPage'
+import { ListaAlunos } from './AlunosPage'
 
 const ICONE_REFEICAO: Record<Refeicao, string> = { 'Café da manhã': '☕', Almoço: '🍽️', Jantar: '🌙', Lanches: '🍎' }
 
@@ -42,6 +46,7 @@ export default function DashboardPage() {
   const [registros, setRegistros] = useState<RegistroAlimento[]>([])
   const [loading, setLoading] = useState(true)
   const naoLidas = useNaoLidas(!!user)
+  const modo = useModoApp(user?.id)
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -81,6 +86,20 @@ export default function DashboardPage() {
     )
   }
 
+  // Painel do personal: alunos, convite e CREF no lugar do Início pessoal
+  if (modo === 'personal' && user) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="animate-fade-up">
+          <p className="text-violet-300 text-xs font-semibold uppercase tracking-wide">Painel do personal</p>
+          <h1 className="text-2xl font-bold text-zinc-50 mt-0.5">{greeting()}, {nomeUsuario}</h1>
+        </div>
+        <ListaAlunos />
+        <ModoPersonal userId={user.id} nomePadrao={user.user_metadata?.nome ?? ''} />
+      </div>
+    )
+  }
+
   const totais = somarTotais(registros)
   const queimado = exercicios.reduce((s, e) => s + e.calorias, 0)
   const somar = !!meta?.somar_exercicio
@@ -95,6 +114,7 @@ export default function DashboardPage() {
       </div>
 
       <InstalarApp />
+      {user && modo === null && <EscolhaModo userId={user.id} />}
 
       {!carregandoAcesso && !premium && (
         <Link to="/assinatura" className="block bg-gradient-to-br from-green-500/20 to-zinc-900 border border-green-500/30 rounded-2xl p-4 animate-fade-up">

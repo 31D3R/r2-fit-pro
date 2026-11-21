@@ -1,10 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Home, Dumbbell, Salad, BookOpen, CalendarClock, Menu as MenuIcon } from 'lucide-react'
+import { Home, Dumbbell, Salad, BookOpen, CalendarClock, Menu as MenuIcon, Users, Briefcase } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { definirModo, useModoApp } from '../lib/modoApp'
 import { useAcesso } from '../context/AcessoContext'
 import { diasRestantes } from '../lib/formatos'
 import { Logo } from './Logo'
 import AvisosGlobais from './AvisosGlobais'
+import SemInternet from './SemInternet'
 
 const navItems = [
   { href: '/dashboard', label: 'Início', icon: Home },
@@ -45,19 +48,33 @@ function AvisoAssinatura() {
 
 export default function Layout({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const { user } = useAuth()
+  const personal = useModoApp(user?.id) === 'personal'
+  // Painel do personal: a primeira aba vira "Alunos"
+  const itens = personal ? [{ href: '/dashboard', label: 'Alunos', icon: Users }, ...navItems.slice(1)] : navItems
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
-      <header className="sticky top-0 z-20 bg-zinc-950/85 backdrop-blur-md border-b border-zinc-800/60">
+      <header className={`sticky top-0 z-20 bg-zinc-950/85 backdrop-blur-md border-b ${personal ? 'border-violet-500/40' : 'border-zinc-800/60'}`}>
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <Link to="/dashboard" className="flex items-center gap-2 group">
             <Logo tamanho="sm" />
-            <span className="font-bold text-zinc-100 tracking-tight group-hover:text-green-400 transition">R2 Fit Pro</span>
+            <span className="font-bold text-zinc-100 tracking-tight group-hover:text-green-400 transition">R2 Fit Pro{personal && <span className="ml-1.5 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 align-middle">Personal</span>}</span>
           </Link>
           <Link to="/menu" aria-label="Abrir menu" className="text-zinc-400 hover:text-zinc-200 p-2 -mr-2 rounded-lg hover:bg-zinc-800 transition">
             <MenuIcon className="w-5 h-5" />
           </Link>
         </div>
+        {personal && (
+          <button type="button" onClick={() => definirModo('aluno', user?.id)} aria-label="Painel do personal: tocar para voltar ao modo normal"
+            className="block w-full bg-violet-500/15 border-t border-violet-500/30 text-violet-200 text-xs">
+            <span className="max-w-lg mx-auto px-4 py-1.5 flex items-center gap-2">
+              <Briefcase className="w-3.5 h-3.5" /><b className="font-semibold">Painel do personal</b>
+              <span className="ml-auto text-violet-300/80 underline">voltar ao modo normal</span>
+            </span>
+          </button>
+        )}
+        <SemInternet />
         <AvisoAssinatura />
         <AvisosGlobais />
       </header>
@@ -68,7 +85,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       <nav className="fixed bottom-0 left-0 right-0 z-20 bg-zinc-950/90 backdrop-blur-md border-t border-zinc-800/60" aria-label="Navegação principal">
         <div className="max-w-lg mx-auto px-1 py-1.5 flex items-center justify-around" style={{ paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom))' }}>
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {itens.map(({ href, label, icon: Icon }) => {
             const active = location.pathname === href || location.pathname.startsWith(href + '/')
             return (
               <Link
@@ -76,7 +93,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 to={href}
                 aria-current={active ? 'page' : undefined}
                 className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl transition active:scale-95 ${
-                  active ? 'text-green-400' : 'text-zinc-500 hover:text-zinc-300'
+                  active ? (personal ? 'text-violet-300' : 'text-green-400') : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
                 <Icon className="w-5 h-5" strokeWidth={1.8} />

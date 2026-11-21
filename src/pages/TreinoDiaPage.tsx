@@ -159,7 +159,12 @@ export default function TreinoDiaPage() {
             <button onClick={() => contador.iniciar(sequencia)} disabled={contador.preparando}
               title={`Faz ${sequencia.length < exercicios.length ? 'os que faltam' : 'todos'} em sequência: a voz anuncia o próximo, conta o descanso e já começa o seguinte.`}
               className="w-full mt-2.5 py-2.5 rounded-xl bg-green-500 text-zinc-950 text-sm font-bold hover:bg-green-400 active:scale-[0.98] transition disabled:opacity-60">
-              {contador.preparando ? 'Preparando áudio...' : `▶ Treino completo · ${sequencia.length} exercícios`}
+              {contador.preparando ? 'Preparando o contador…' : (
+                <>
+                  <span className="block">▶ Iniciar contador do treino completo</span>
+                  <span className="block text-xs font-semibold opacity-80">{sequencia.length} exercícios em sequência, com voz e descanso</span>
+                </>
+              )}
             </button>
           )}
         </div>
