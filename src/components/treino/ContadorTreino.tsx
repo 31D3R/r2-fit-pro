@@ -3,10 +3,10 @@
 // iPhone e o Android exigem para tocar áudio e entrar em tela cheia.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Pause, Play, X } from 'lucide-react'
+import { Pause, Play, SkipForward, X } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { concluirExercicio, type Sessao } from '../../lib/sessoes'
-import { TreinoPlayer, carregarClipes, carregarSeries, estadoEm, type Clipes, type ModoSom } from '../../lib/workoutAudio'
+import { TreinoPlayer, carregarClipes, carregarSeries, destinoPular, estadoEm, type Clipes, type ModoSom } from '../../lib/workoutAudio'
 import { carregarNomes } from '../../lib/vozNomes'
 import { carregarPreferencias, salvarPreferencias, type PrefsAudio } from '../../lib/preferencias'
 import { detectarSistema } from '../../lib/instalacao'
@@ -64,6 +64,7 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
   const [itens, setItens] = useState<ExercicioPlano[]>([])
   const [t, setT] = useState(0)
   const [pausado, setPausado] = useState(false)
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false)
   const [precisaToque, setPrecisaToque] = useState(false)
   const [erroAudio, setErroAudio] = useState('')
   const [registrados, setRegistrados] = useState<number[]>([])
@@ -162,11 +163,19 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
     for (const a of ['play', 'pause'] as const) { try { navigator.mediaSession.setActionHandler(a, null) } catch { /* sem suporte */ } }
   }
 
-  // Botão voltar do Android no meio do treino: confirma antes de sair (sair para o contador)
-  const telaAtual = useRef(tela)
-  telaAtual.current = tela
+  // Botão voltar do Android com o contador aberto: tudo resolvido dentro do app (a caixa de confirmação do
+  // sistema, aberta de dentro do aviso do botão voltar, travava a tela). Contando: pergunta se quer encerrar;
+  // com a pergunta aberta: fecha a pergunta; no resumo: volta para o treino.
+  const voltarRef = useRef<() => boolean>(() => true)
+  voltarRef.current = () => {
+    if (tela === 'parado') return true
+    if (confirmandoSaida) setConfirmandoSaida(false)
+    else if (tela === 'rodando') setConfirmandoSaida(true)
+    else fechar()
+    return false
+  }
   useEffect(() => {
-    bloquearVoltar(() => telaAtual.current === 'concluido' || telaAtual.current === 'parado' || window.confirm('Sair do contador? O treino em andamento para.'))
+    bloquearVoltar(() => voltarRef.current())
     return () => bloquearVoltar(null)
   }, [])
 
@@ -226,6 +235,15 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
   }, [tela])
 
   const estado = playerRef.current && tela === 'rodando' ? estadoEm(playerRef.current.crono, t) : null
+  // Botão "Pular": série → próximo descanso; descanso → contagem da próxima série
+  const destino = playerRef.current && tela === 'rodando' ? destinoPular(playerRef.current.crono, t) : null
+  const pulo = destino ? { ...destino, rotulo: estado && (estado.fase.tipo === 'work' || estado.fase.tipo === 'rest_countdown') ? 'Pular série' : estado?.fase.tipo === 'countdown' ? 'Pular contagem' : 'Pular descanso' } : null
+  const pular = () => {
+    const p = playerRef.current
+    if (!p || !destino) return
+    p.irPara(destino.t)
+    setT(p.tempo())
+  }
   const idxAtual = estado?.fase.exercicio ?? 0
   const exAtual = itens[idxAtual]
 
@@ -306,6 +324,7 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
   }
 
   const fechar = () => {
+    setConfirmandoSaida(false)
     playerRef.current?.parar()
     playerRef.current = null
     liberarWakeLock()
@@ -315,13 +334,13 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
     aoFechar?.()
   }
 
-  const encerrar = () => {
-    const multi = itens.length > 1
-    const msg = multi
-      ? 'Encerrar o treino agora? Tudo o que já foi feito fica no diário como treino incompleto.'
-      : avulso ? 'Encerrar agora? O tempo das séries já feitas vai para o diário.'
-      : 'Encerrar agora? As séries já feitas ficam no diário como treino incompleto.'
-    if (!confirm(msg)) return
+  const textoEncerrar = itens.length > 1
+    ? 'Tudo o que já foi feito fica no diário como treino incompleto.'
+    : avulso ? 'O tempo das séries já feitas vai para o diário.'
+    : 'As séries já feitas ficam no diário como treino incompleto.'
+  const encerrar = () => setConfirmandoSaida(true)
+  const encerrarConfirmado = () => {
+    setConfirmandoSaida(false)
     playerRef.current?.parar()
     playerRef.current = null
     liberarWakeLock()
@@ -595,9 +614,30 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
               className={`w-12 h-12 rounded-full border flex items-center justify-center active:scale-95 transition ${pausado ? 'border-green-800 text-green-600' : 'border-zinc-800 text-zinc-500'}`}>
               {pausado ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
             </button>
+            {pulo && (
+              <button onClick={pular} aria-label={pulo.rotulo}
+                className="w-12 h-12 rounded-full border border-zinc-800 text-zinc-500 flex items-center justify-center active:scale-95 transition">
+                <SkipForward className="w-5 h-5" />
+              </button>
+            )}
             <button onClick={encerrar} aria-label="Encerrar" className="w-12 h-12 rounded-full border border-zinc-800 text-zinc-500 flex items-center justify-center active:scale-95 transition">
               <X className="w-5 h-5" />
             </button>
+          </div>
+        )}
+        {pulo && fase?.tipo !== 'final' && <p className="-mt-6 pb-4 text-center text-[11px] text-zinc-600">{pulo.rotulo}</p>}
+
+        {confirmandoSaida && (
+          <div className="fixed inset-0 z-[80] bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={() => setConfirmandoSaida(false)}>
+            <div role="alertdialog" aria-label="Encerrar o treino" onClick={e => e.stopPropagation()}
+              className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] text-center">
+              <p className="text-lg font-bold text-zinc-50">Encerrar {itens.length > 1 ? 'o treino' : 'o exercício'} agora?</p>
+              <p className="text-sm text-zinc-400 mt-1">{textoEncerrar}</p>
+              <div className="flex flex-col gap-2 mt-5">
+                <button onClick={encerrarConfirmado} className="w-full py-3 rounded-2xl font-bold bg-red-500/90 text-white">Encerrar</button>
+                <button onClick={() => setConfirmandoSaida(false)} className="w-full py-3 rounded-2xl font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700">Continuar treino</button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -115,6 +115,25 @@ export function montarCronograma(cfg: ConfigCrono | ConfigCrono[], dur: Partial<
   return { fases, cues, total, fimUltimaSerie, marcos, exercicios: lista.length }
 }
 
+/**
+ * Para onde vai o botão "Pular": na série (ou na contagem para o descanso) vai para o começo do próximo descanso;
+ * no descanso vai para a contagem 5-4-3-2-1 da próxima série; na contagem antes da série, direto para a série.
+ * Sem descanso depois (última série), vai para o próximo exercício ou para o fim. null quando não há o que pular.
+ */
+export function destinoPular(c: Cronograma, t: number): { t: number; para: 'descanso' | 'serie' | 'fim' } | null {
+  const i = c.fases.findIndex(f => t < f.fim)
+  if (i < 0) return null
+  const f = c.fases[i]
+  if (f.tipo === 'final') return null
+  const alvo = (tipos: FaseTipo[]) => c.fases.slice(i + 1).find(x => tipos.includes(x.tipo))
+  if (f.tipo === 'work' || f.tipo === 'rest_countdown') {
+    const r = alvo(['rest', 'countdown', 'final'])!
+    return { t: r.inicio, para: r.tipo === 'rest' ? 'descanso' : r.tipo === 'final' ? 'fim' : 'serie' }
+  }
+  const r = f.tipo === 'countdown' ? alvo(['work']) : alvo(['countdown', 'final'])
+  return r ? { t: r.inicio, para: r.tipo === 'final' ? 'fim' : 'serie' } : null
+}
+
 export interface Estado {
   fase: Fase
   indice: number
@@ -508,6 +527,32 @@ export class TreinoPlayer {
     this.fimSeries = []
     if (this.modo === 'nativo' && this.avisos.length) this.avisos = avisosDasFases(this.crono, this.cfgs)
     this.reagendar(t)
+  }
+
+  /**
+   * Pula para a frente na linha do tempo (botão "Pular"): o relógio passa a contar do novo ponto e as falas
+   * seguem dali. Pausado, continua pausado no novo ponto. Séries que ficaram para trás contam como feitas.
+   */
+  irPara(destino: number) {
+    if (this.parado) return
+    const t = this.tempo()
+    const pos = Math.min(Math.max(destino, t), this.crono.total)
+    if (pos <= t + 0.01) return
+    if (this.modo === 'mix' && this.ctx) {
+      // agendarDe começa 0,05 s depois de agora: compensa para o relógio já ficar no ponto (pausado, ele não anda)
+      this.agendarDe(pos + 0.05) // pausado (contexto suspenso), as falas esperam o retomar no horário certo
+    } else if (this.audio) {
+      try { this.audio.currentTime = pos } catch { /* ainda carregando */ }
+      this.baseParede = Date.now() - pos * 1000
+      this.interrompido = false
+    } else {
+      this.t0 -= (pos - t) * 1000
+      const i = this.crono.cues.findIndex(c => c.t >= pos - 0.02)
+      this.proximoCue = i < 0 ? this.crono.cues.length : i
+      if (this.modo === 'nativo' && this.pausadoEm === null) this.tocarNativo(pos).catch(() => {})
+      if (this.modo === 'voz') window.speechSynthesis?.cancel()
+    }
+    this.verificar()
   }
 
   /** Depois de refazer a linha do tempo, toca as falas futuras no horário novo (sem cortar a que está tocando). */

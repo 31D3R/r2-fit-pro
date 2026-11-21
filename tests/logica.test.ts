@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { CATALOGO, GRUPOS } from '../src/data/exercicios'
 import { buscarExercicios, encontrarPorNome } from '../src/lib/busca'
-import { montarCronograma, estadoEm, renderizarFaixa, aparar, maximizar, chaveSerie, textoDoClipe, TreinoPlayer } from '../src/lib/workoutAudio'
+import { destinoPular, montarCronograma, estadoEm, renderizarFaixa, aparar, maximizar, chaveSerie, textoDoClipe, TreinoPlayer } from '../src/lib/workoutAudio'
 import { passoReps, passoCarga, lerTempo, mss } from '../src/components/treino/AjustesExercicio'
 import { marcarVez, desfazerVez, situacao, normalizarItem, normalizarRotina, textoAviso, somarDias, pendentesHoje, pendentesDoTreino, historicoPorDia, diaCompleto } from '../src/lib/rotinaBase'
 import { opcoesEncaixe, alertasSemana, familiaDoExercicio, treinosPerdidos, planejarDivisao, divisaoPorAtribuicao, parteDoExercicio, desfazerAjuste, encaixar, diasLivres, podeDividir, ajustesDaSemana, avisosDaSemana, inicioSemana, semanaDoPlano, aplicarSemana, temDiasDaSemana } from '../src/lib/semanaBase'
@@ -533,5 +533,18 @@ await t('dieta para o diário: alimentos com macros estimados e refeição certa
   assert.equal(alimentosDaRefeicao(plano, 5).length, 0)
   assert.equal(refeicaoDoDiario('Café da Manhã'), 'Café da manhã'); assert.equal(refeicaoDoDiario('Almoço'), 'Almoço')
   assert.equal(refeicaoDoDiario('Jantar'), 'Jantar'); assert.equal(refeicaoDoDiario('Lanche da tarde'), 'Lanches'); assert.equal(refeicaoDoDiario('Ceia'), 'Lanches')
+})
+await t('contador: pular vai da série para o descanso e do descanso para a próxima série', () => {
+  const c = montarCronograma([{ series: 2, execSeg: 30, descansoSeg: 60, nome: 'Supino' }, { series: 1, execSeg: 20, descansoSeg: 45, nome: 'Remada' }])
+  const fase = (tipo: string, ex: number, serie: number) => c.fases.find(f => f.tipo === tipo && f.exercicio === ex && f.serie === serie && f.proximo === undefined)!
+  const w1 = fase('work', 0, 1), r1 = fase('rest', 0, 1), cd2 = fase('countdown', 0, 2), w2 = fase('work', 0, 2)
+  assert.deepEqual(destinoPular(c, fase('countdown', 0, 1).inicio + 1), { t: w1.inicio, para: 'serie' }, 'na contagem: direto para a série')
+  assert.deepEqual(destinoPular(c, w1.inicio + 5), { t: r1.inicio, para: 'descanso' })
+  assert.deepEqual(destinoPular(c, r1.inicio + 10), { t: cd2.inicio, para: 'serie' }, 'no descanso: contagem da próxima série')
+  const transicao = c.fases.find(f => f.tipo === 'rest' && f.proximo === 1)!
+  assert.deepEqual(destinoPular(c, w2.inicio + 3), { t: transicao.inicio, para: 'descanso' }, 'última série: descanso antes do próximo exercício')
+  const wFinal = fase('work', 1, 1)
+  assert.equal(destinoPular(c, wFinal.inicio + 2)!.para, 'fim', 'última série do treino: fim')
+  assert.equal(destinoPular(c, c.total - 0.1), null)
 })
 console.log(`\n${ok} testes passaram`)
