@@ -66,7 +66,7 @@ export default function MenuPage() {
   })
 
   const sair = async () => {
-    await signOut()
+    try { await signOut() } catch { return } // escolheu ficar (registros sem internet ainda não enviados)
     navigate('/', { replace: true })
   }
 

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { Copy, MessageCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Dieta } from '../types'
 import { listaDeCompras, textoDaLista } from '../lib/comprasBase'
 import { Spinner } from '../components/UI'
+import { useVoltar } from '../lib/useVoltar'
 
 const DIAS = [1, 3, 7, 14]
 const chaveLocal = (id: string) => `r2-compras-${id}`
@@ -13,7 +14,7 @@ const lerMarcados = (id: string) => { try { return new Set<string>(JSON.parse(lo
 /** Lista de compras da dieta: soma as quantidades do dia e multiplica pelos dias; marca o que já pegou. */
 export default function ComprasPage() {
   const { id = '' } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+  const voltarTela = useVoltar('/dieta')
   const [dieta, setDieta] = useState<Dieta | null | undefined>(undefined)
   const [dias, setDias] = useState(7)
   const [marcados, setMarcados] = useState<Set<string>>(() => lerMarcados(id))
@@ -34,7 +35,7 @@ export default function ComprasPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start gap-3">
-        <button onClick={() => navigate(-1)} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
+        <button onClick={() => voltarTela()} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-zinc-100">Lista de compras</h1>
           <p className="text-sm text-zinc-500 truncate">{dieta.nome}</p>

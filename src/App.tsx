@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Confirmacoes from './components/Confirmacao'
@@ -134,15 +134,18 @@ function AppRoutes() {
 function SincronizarApp() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  // App Android: notificação tocada navega aqui dentro (sem recarregar), botão voltar e contador órfão
+  const navRef = useRef(navigate)
+  navRef.current = navigate
+  // App Android: notificação tocada navega aqui dentro (sem recarregar), botão voltar e contador órfão.
+  // Só uma vez ao abrir: o navigate muda a cada troca de tela e repetir isto empilhava o botão voltar e parava o contador.
   useEffect(() => {
     if (!ehAppNativo()) return
-    ;(window as unknown as { __r2Navegar?: (u: string) => void }).__r2Navegar = (u: string) => { if (u.startsWith('/')) navigate(u) }
+    ;(window as unknown as { __r2Navegar?: (u: string) => void }).__r2Navegar = (u: string) => { if (u.startsWith('/')) navRef.current(u) }
     escutarVoltar()
     // site acabou de abrir: um contador nativo que ficou tocando de antes (app recarregado) não tem mais quem o pare
     const c = contadorNativo()
-    if (c && typeof c.parar === 'function') Promise.resolve().then(() => c.parar()).catch(() => {})
-  }, [navigate])
+    if (c && typeof c.parar === 'function') Promise.resolve().then(() => c.parar({ liberarTela: true })).catch(() => {})
+  }, [])
   useEffect(() => {
     if (user && ehAppNativo()) import('./lib/lembretes').then(m => m.sincronizarLembretesApp(user.id)).catch(() => {})
     // Rotina de ergogênicos (pode ter mudado em outro aparelho)

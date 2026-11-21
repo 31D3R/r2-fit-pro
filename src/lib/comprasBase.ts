@@ -7,7 +7,16 @@ type Acumulado = { nome: string; g: number; ml: number; unidades: Map<string, { 
 
 const NUMEROS: Record<string, number> = { meio: 0.5, meia: 0.5, '½': 0.5, um: 1, uma: 1, dois: 2, duas: 2, tres: 3, 'três': 3, quatro: 4, cinco: 5 }
 const fmt = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
-const singular = (s: string) => s.split(' ').map((p, i) => (i === 0 ? p.replace(/(ões)$/, 'ão').replace(/(ães)$/, 'ão').replace(/s$/, '') : p)).join(' ')
+/** Primeira palavra no singular: "colheres de sopa" → "colher de sopa", "pães" → "pão", "fatias" → "fatia". */
+function singularPalavra(p: string): string {
+  if (/(ões|ães)$/.test(p)) return p.replace(/(ões|ães)$/, 'ão')
+  if (/[rz]es$/.test(p)) return p.slice(0, -2)
+  if (/éis$/.test(p)) return p.replace(/éis$/, 'el')
+  if (/ais$/.test(p)) return p.replace(/ais$/, 'al')
+  if (/[aeiouã]s$/.test(p)) return p.slice(0, -1)
+  return p
+}
+const singular = (s: string) => s.split(' ').map((p, i) => (i === 0 ? singularPalavra(p) : p)).join(' ')
 
 export function listaDeCompras(refeicoes: { alimentos?: { nome: string; quantidade?: string }[] }[], dias: number): ItemCompra[] {
   const mapa = new Map<string, Acumulado>()
@@ -44,7 +53,8 @@ export function listaDeCompras(refeicoes: { alimentos?: { nome: string; quantida
 
 function plural(s: string): string {
   const [p, ...resto] = s.split(' ')
-  const pl = /ão$/.test(p) ? p.replace(/ão$/, 'ões') : /[aeiou]$/.test(p) ? `${p}s` : /[rz]$/.test(p) ? `${p}es` : /l$/.test(p) ? p.replace(/l$/, 'is') : p
+  const IRREGULAR: Record<string, string> = { 'pão': 'pães', 'mão': 'mãos', 'grão': 'grãos', 'alemão': 'alemães' }
+  const pl = IRREGULAR[p] ?? (/ão$/.test(p) ? p.replace(/ão$/, 'ões') : /[aeiou]$/.test(p) ? `${p}s` : /[rz]$/.test(p) ? `${p}es` : /el$/.test(p) ? p.replace(/el$/, 'éis') : /al$/.test(p) ? p.replace(/al$/, 'ais') : p)
   return [pl, ...resto].join(' ')
 }
 

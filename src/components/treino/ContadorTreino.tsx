@@ -10,7 +10,7 @@ import { TreinoPlayer, carregarClipes, carregarSeries, destinoPular, estadoEm, t
 import { carregarNomes } from '../../lib/vozNomes'
 import { carregarPreferencias, salvarPreferencias, type PrefsAudio } from '../../lib/preferencias'
 import { detectarSistema } from '../../lib/instalacao'
-import { bloquearVoltar, contadorNativo, telaLigadaNativa } from '../../lib/nativo'
+import { bloquearVoltar, contadorNativo, ehAppNativo, telaLigadaNativa } from '../../lib/nativo'
 import type { ExercicioPlano } from '../../lib/treinoModel'
 import { lerTempo, mss, normalizarCarga, passoCarga } from './AjustesExercicio'
 import { passoTempo } from '../../lib/treinoModel'
@@ -24,13 +24,22 @@ interface DiaInfo { dia: string; exercicios: ExercicioPlano[] }
 
 const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
+/** O iPhone mantém a tela ligada para o site? Safari 16.4+; no app da tela inicial só a partir do iOS 18.4. */
+function telaFicaLigada(): boolean {
+  if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return false
+  const m = navigator.userAgent.match(/OS (\d+)_(\d+)/)
+  const versao = m ? Number(m[1]) + Number(m[2]) / 100 : 99
+  const instalado = (navigator as Navigator & { standalone?: boolean }).standalone === true || window.matchMedia?.('(display-mode: standalone)').matches
+  return instalado ? versao >= 18.04 : versao >= 16.04
+}
+
 /** Limite do iPhone para sites: som misturado à música só com a tela desbloqueada. */
 function AvisoIphone() {
   return (
     <div role="note" className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100 leading-relaxed">
       <p className="font-semibold text-amber-300">Só para iPhone</p>
       <ul className="mt-1 list-disc pl-4 flex flex-col gap-0.5">
-        <li>Funciona com a <b>tela desbloqueada</b>: ela fica ligada sozinha durante o exercício.</li>
+        <li>Funciona com a <b>tela desbloqueada</b>: {telaFicaLigada() ? 'ela fica ligada sozinha durante o exercício.' : <>neste iPhone a tela pode apagar sozinha. Em Ajustes › Tela e Brilho › <b>Bloqueio Automático</b>, escolha "Nunca" enquanto treina.</>}</li>
         <li>Desligue o <b>modo silencioso</b> (chave na lateral do iPhone), senão a voz fica muda.</li>
         <li>Se bloquear a tela, a voz para; ao desbloquear, o treino continua do ponto certo.</li>
       </ul>
@@ -184,6 +193,34 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
     bloquearVoltar(() => voltarRef.current())
     return () => bloquearVoltar(null)
   }, [])
+  const contadorAberto = tela !== 'parado'
+  // App Android: "Parar" na notificação encerra o contador na tela também (como "Encerrar", guardando o que foi feito)
+  const pararPelaNotificacao = useRef<() => void>(() => {})
+  useEffect(() => {
+    if (!contadorAberto) return
+    const n = contadorNativo()
+    if (!n || typeof n.addListener !== 'function') return
+    let tirar: (() => void) | null = null
+    let vivo = true
+    Promise.resolve(n.addListener('parado', () => pararPelaNotificacao.current()))
+      .then(h => { if (vivo) tirar = () => { h.remove().catch(() => {}) }; else h.remove().catch(() => {}) }).catch(() => {})
+    return () => { vivo = false; tirar?.() }
+  }, [contadorAberto])
+  // Navegador (iPhone: deslizar da borda para voltar; Android: gesto/botão voltar do Chrome): uma entrada a mais
+  // no histórico segura o voltar, e o app pergunta se quer encerrar em vez de sair da tela com o treino rodando.
+  useEffect(() => {
+    if (!contadorAberto || ehAppNativo()) return
+    let ligado = true
+    const marcar = () => window.history.pushState({ ...(window.history.state ?? {}), r2Contador: true }, '')
+    marcar()
+    const aoVoltar = () => { if (ligado && !voltarRef.current()) marcar() }
+    window.addEventListener('popstate', aoVoltar)
+    return () => {
+      ligado = false
+      window.removeEventListener('popstate', aoVoltar)
+      if ((window.history.state as { r2Contador?: boolean } | null)?.r2Contador) window.history.back()
+    }
+  }, [contadorAberto])
 
   useEffect(() => () => {
     playerRef.current?.parar()
@@ -357,6 +394,7 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
     : avulso ? 'O tempo das séries já feitas vai para o diário.'
     : 'As séries já feitas ficam no diário como treino incompleto.'
   const encerrar = () => setConfirmandoSaida(true)
+  pararPelaNotificacao.current = () => { if (tela === 'rodando') encerrarConfirmado() }
   const encerrarConfirmado = () => {
     setConfirmandoSaida(false)
     playerRef.current?.parar()
@@ -421,10 +459,15 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
       )}
       <div className="flex items-center gap-3 mt-2" aria-label="Volume do contador">
         <button type="button" onClick={alternarMudo} className="text-sm shrink-0" aria-label={mudo ? 'Ativar som' : 'Silenciar'}>{mudo ? '🔇' : '🔊'}</button>
-        <input type="range" min={0} max={1} step={0.05} value={volume} aria-label="Volume"
-          onChange={e => mudarVolume(+e.target.value)} onPointerUp={() => salvarAudio({ volume })} onKeyUp={() => salvarAudio({ volume })}
-          className="flex-1 min-w-0 h-1 accent-green-500 cursor-pointer" />
-        <span className="text-xs text-zinc-500 w-9 text-right">{Math.round(volume * 100)}%</span>
+        {sistema === 'iphone' && modoSom === 'bloqueio'
+          // o iPhone não deixa o site mudar o volume deste modo: só os botões laterais
+          ? <span className="flex-1 min-w-0 text-[11px] text-zinc-500">Volume pelos botões laterais do iPhone</span>
+          : <>
+            <input type="range" min={0} max={1} step={0.05} value={volume} aria-label="Volume"
+              onChange={e => mudarVolume(+e.target.value)} onPointerUp={() => salvarAudio({ volume })} onKeyUp={() => salvarAudio({ volume })}
+              className="flex-1 min-w-0 h-1 accent-green-500 cursor-pointer" />
+            <span className="text-xs text-zinc-500 w-9 text-right">{Math.round(volume * 100)}%</span>
+          </>}
         {!avulso && chaveContador}
       </div>
       {erroAudio && <p className="text-sm text-red-400 mt-2">{erroAudio}</p>}

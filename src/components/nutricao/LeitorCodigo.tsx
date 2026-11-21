@@ -49,7 +49,14 @@ export default function LeitorCodigo({ onCodigo, onClose }: { onCodigo: (codigo:
         const v = video.current!
         v.srcObject = stream
         await v.play()
-        const detector = await criarDetector()
+        let detector: Detector
+        try { detector = await criarDetector() } catch {
+          // leitor não carregou (sem internet ou bloqueado): desliga a câmera e deixa digitar
+          stream?.getTracks().forEach(t => t.stop())
+          if (vivo) { setErro('O leitor de código não carregou. Confira a internet ou digite os números do código.'); setDigitar(true) }
+          return
+        }
+        if (!vivo) return
         const ler = async () => {
           if (!vivo) return
           try {
@@ -63,6 +70,8 @@ export default function LeitorCodigo({ onCodigo, onClose }: { onCodigo: (codigo:
         }
         ler()
       } catch (e) {
+        stream?.getTracks().forEach(t => t.stop())
+        if (!vivo) return
         const nome = (e as { name?: string })?.name
         setErro(nome === 'NotAllowedError' ? 'Permita o uso da câmera para ler o código de barras.' : 'Não foi possível abrir a câmera neste aparelho.')
         setDigitar(true)

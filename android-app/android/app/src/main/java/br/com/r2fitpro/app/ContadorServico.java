@@ -33,6 +33,7 @@ public class ContadorServico extends Service {
         // "Parar" na notificação: encerra o contador mesmo se a página que o comandava não existe mais
         if (intent != null && ACAO_PARAR.equals(intent.getAction())) {
             ContadorMotor.get(getApplicationContext()).parar();
+            ContadorNativoPlugin.avisarParado();
             stopForeground(true);
             stopSelf();
             return START_NOT_STICKY;

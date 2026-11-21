@@ -5,7 +5,10 @@ export interface ContadorNativo {
   preparar(o: { clipes: Record<string, { wav: string; dur: number }> }): Promise<void>
   tocar(o: { cues: { t: number; clip: string }[]; desde: number; volume: number; mudo: boolean; titulo: string; avisos?: { t: number; titulo: string; texto: string; dur: number }[] }): Promise<void>
   pausar(): Promise<void>
-  parar(): Promise<void>
+  /** liberarTela (1.9.1+): também tira a tela sempre ligada e a tela cheia */
+  parar(o?: { liberarTela?: boolean }): Promise<void>
+  /** 1.9.1+: "parado" quando a pessoa toca em Parar na notificação */
+  addListener?(ev: 'parado', cb: () => void): Promise<{ remove: () => Promise<void> }> | { remove: () => Promise<void> }
   volume(o: { volume: number; mudo: boolean }): Promise<void>
   telaLigada(o: { ligada: boolean }): Promise<void>
   /** App 1.3+: notificação de teste igual à de uma fase */
@@ -55,11 +58,14 @@ interface AppPlugin {
   minimizeApp?: () => Promise<void>
 }
 /** Liga o botão voltar do app: volta uma tela; na primeira tela minimiza o app; no contador pede confirmação. */
+let escutandoVoltar = false
 export function escutarVoltar() {
+  if (escutandoVoltar) return
   const c = cap()
   if (!c?.isNativePlatform?.()) return
   const app = (c.registerPlugin?.<AppPlugin>('App') ?? (c.Plugins?.App as AppPlugin | undefined))
   if (!app?.addListener) return
+  escutandoVoltar = true
   app.addListener('backButton', ({ canGoBack }) => {
     if (fecharModal && fecharModal()) return
     if (bloqueioVoltar && !bloqueioVoltar()) return

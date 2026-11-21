@@ -23,7 +23,7 @@ import { confirmar } from '../components/Confirmacao'
 function ChaveConcluido({ ligado, ocupado, onTrocar }: { ligado: boolean; ocupado: boolean; onTrocar: () => void }) {
   return (
     <button type="button" role="switch" aria-checked={ligado} aria-label="Concluído" title="Concluído" onClick={onTrocar} disabled={ocupado}
-      className="shrink-0 h-8 flex items-center disabled:opacity-60">
+      className="relative shrink-0 h-8 flex items-center disabled:opacity-60 after:absolute after:-inset-x-1.5 after:-inset-y-2 after:content-['']">
       <span className={`relative w-9 h-5 rounded-full transition-colors ${ligado ? 'bg-green-500' : 'bg-zinc-700'}`}>
         <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${ligado ? 'translate-x-4' : ''}`} />
       </span>
@@ -60,7 +60,14 @@ export default function TreinoDiaPage() {
   useEffect(() => {
     if (!id) return
     // Treino incompleto parado há horas já foi contado: a tela começa uma sessão nova
-    sessaoAtual(id, diaIdx).then(s => setSessao(s && !s.concluido && !emAndamento(s) && Object.keys(s.series_realizadas ?? {}).length > 0 ? null : s))
+    // Treino concluído num dia anterior (semana passada): abre limpo para o treino de hoje
+    const doDia = (iso: string | null | undefined) => { if (!iso) return ''; const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` }
+    const hoje = doDia(new Date().toISOString())
+    sessaoAtual(id, diaIdx).then(s => setSessao(
+      !s ? null
+        : s.concluido ? (doDia(s.data_fim ?? s.data_inicio) === hoje ? s : null)
+          : !emAndamento(s) && Object.keys(s.series_realizadas ?? {}).length > 0 ? null : s,
+    ))
   }, [id, diaIdx])
 
   if (loading) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>
@@ -213,7 +220,7 @@ export default function TreinoDiaPage() {
                   )}
                   <ChaveConcluido ligado={ok} ocupado={marcando === ex.id} onTrocar={() => alternarConcluido(ex)} />
                   <button onClick={() => setMenu(m => (m === ex.id ? null : ex.id))} aria-label="Mais opções" aria-expanded={menu === ex.id}
-                    className={`w-6 h-8 shrink-0 rounded-md text-base leading-none ${menu === ex.id ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-500'}`}>⋯</button>
+                    className={`relative w-7 h-8 shrink-0 rounded-md text-lg leading-none after:absolute after:-inset-x-1 after:-inset-y-2 after:content-[''] ${menu === ex.id ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-500'}`}>⋯</button>
                 </div>
                 {historico && <LinhaCarga ex={ex} pontos={historico.get(chaveExercicio(ex))} hoje={hoje}
                   onAplicar={carga => atualizarExercicios(l => l.map(x => (x.id === ex.id ? { ...x, carga } : x)))}

@@ -38,12 +38,20 @@ export function AcessoProvider({ children }: { children: ReactNode }) {
       setCarregadoPara(null)
       return
     }
+    type Acesso = { estado: EstadoAcesso; premium: boolean; admin: boolean; teste_ate?: string | null }
+    const chave = `r2-acesso-${uid}`
+    const aplicar = (d: Acesso) => { setEstado(d.estado); setPremium(d.premium); setAdmin(d.admin); setTesteAte(d.teste_ate ?? null); setErro(false) }
     const { data, error } = await supabase.rpc('meu_acesso')
     if (error || !data) {
-      setErro(true)
+      // sem internet (academia sem sinal): vale o último acesso conferido neste aparelho (até 7 dias)
+      let guardado: (Acesso & { em: number }) | null = null
+      try { guardado = JSON.parse(localStorage.getItem(chave) ?? 'null') } catch { /* ignore */ }
+      if (guardado && Date.now() - guardado.em < 7 * 86_400_000) aplicar(guardado)
+      else setErro(true)
     } else {
-      const d = data as { estado: EstadoAcesso; premium: boolean; admin: boolean; teste_ate?: string | null }
-      setEstado(d.estado); setPremium(d.premium); setAdmin(d.admin); setTesteAte(d.teste_ate ?? null); setErro(false)
+      const d = data as Acesso
+      aplicar(d)
+      try { localStorage.setItem(chave, JSON.stringify({ ...d, em: Date.now() })) } catch { /* ignore */ }
     }
     setCarregadoPara(uid)
     setCarregando(false)

@@ -167,7 +167,8 @@ export function ModoPersonal({ userId, nomePadrao }: { userId: string; nomePadra
   const link = perfil ? linkConvite(window.location.origin, perfil.codigo) : ''
   const compartilhar = async () => {
     const texto = `Quero acompanhar seus treinos e sua dieta pelo R2 Fit Pro. Entre por este link e aceite o convite (código ${perfil!.codigo}): ${link}`
-    if (navigator.share) { try { await navigator.share({ text: texto }); return } catch { /* cancelado */ } }
+    // a pessoa fechou a folha de compartilhar: não copia nem mostra aviso
+    if (navigator.share) { try { await navigator.share({ text: texto }); return } catch (e) { if ((e as { name?: string })?.name === 'AbortError') return } }
     try { await navigator.clipboard.writeText(texto); setAviso('Convite copiado. Cole no WhatsApp do aluno.') } catch { setAviso(texto) }
   }
 

@@ -9,6 +9,8 @@ import { traduzirErroAuth, validarSenha } from '../lib/formatos'
 import { Button, Card, Input, Select, Spinner, Textarea } from '../components/UI'
 import { CartaoVersaoApp } from '../components/AvisoAtualizacaoApp'
 import { entregarArquivo } from '../lib/nativo'
+import { limparOffline } from '../lib/offline'
+import { hojeLocal } from '../lib/diario'
 
 function Interruptor({ rotulo, descricao, valor, onChange, desabilitado }: { rotulo: string; descricao?: string; valor: boolean; onChange: (v: boolean) => void; desabilitado?: boolean }) {
   return (
@@ -84,7 +86,7 @@ export default function ConfiguracoesPage() {
         resultado[t] = data
       }
       const blob = new Blob([JSON.stringify(resultado, null, 2)], { type: 'application/json' })
-      const r = await entregarArquivo(blob, `r2fitpro-meus-dados-${new Date().toISOString().slice(0, 10)}.json`, 'Salvar meus dados')
+      const r = await entregarArquivo(blob, `r2fitpro-meus-dados-${hojeLocal()}.json`, 'Salvar meus dados')
       if (r === 'sem_suporte') mostrar('erro', 'Atualize o app (versão nova no aviso do topo) para salvar o arquivo.')
       else if (r !== 'cancelado') mostrar('ok', 'Arquivo com seus dados gerado.')
     } catch {
@@ -110,6 +112,7 @@ export default function ConfiguracoesPage() {
       const { data: fotos } = await supabase.storage.from('evolucao').list(user!.id, { limit: 1000 })
       if (fotos?.length) await supabase.storage.from('evolucao').remove(fotos.map(f => `${user!.id}/${f.name}`))
       await chamarApi('conta', { acao: 'excluir', confirmacao: 'EXCLUIR' })
+      limparOffline() // a conta foi apagada: o que estava guardado no aparelho não vale mais
       await signOut().catch(() => {})
       navigate('/', { replace: true })
     } catch (e) {

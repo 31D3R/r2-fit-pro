@@ -131,7 +131,8 @@ function GerenciarAmigos({ dados, codigoInicial, aoMudar }: { dados: DadosAmigos
   })
   const convidar = async () => {
     const texto = `Bora treinar junto no R2 Fit Pro? Me adiciona como amigo pelo link (meu código é ${perfil.codigo}): ${link}`
-    if (navigator.share) { try { await navigator.share({ text: texto }); return } catch { /* cancelado */ } }
+    // a pessoa fechou a folha de compartilhar: não copia nem mostra aviso
+    if (navigator.share) { try { await navigator.share({ text: texto }); return } catch (e) { if ((e as { name?: string })?.name === 'AbortError') return } }
     try { await navigator.clipboard.writeText(texto); setAviso('Convite copiado. Cole no WhatsApp.') } catch { setAviso(texto) }
   }
   const privacidade = (campo: 'mostrar_treinos' | 'entrar_ranking', valor: boolean) => executar(campo, async () => { await ativarAmigos(null, { [campo]: valor }); aoMudar() })

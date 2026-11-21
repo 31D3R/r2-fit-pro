@@ -124,6 +124,12 @@ export default function PlanoWizardPage() {
     } finally { setGerando(false) }
   }
 
+  if (editando && !carregando && !treino) return (
+    <div className="text-center py-16">
+      <p className="text-zinc-300">Treino não encontrado.</p>
+      <button onClick={() => navigate('/treino')} className="mt-3 text-sm font-semibold text-green-400 hover:text-green-300">Voltar aos treinos</button>
+    </div>
+  )
   if (editando && (carregando || !inicializado)) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>
 
   if (gerando && modo === 'ia' && !editando) {

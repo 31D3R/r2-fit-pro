@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Timer } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { carregarJejum, salvarJejum } from '../lib/jejum'
@@ -7,13 +6,14 @@ import { PROTOCOLOS, duracao, encerrar, situacaoJejum, type DadosJejum } from '.
 import { ehAppNativo } from '../lib/nativo'
 import { Spinner } from '../components/UI'
 import { confirmar } from '../components/Confirmacao'
+import { useVoltar } from '../lib/useVoltar'
 
 const hora = (d: Date) => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 const diaHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 
 export default function JejumPage() {
   const { user } = useAuth()
-  const navigate = useNavigate()
+  const voltarTela = useVoltar('/menu')
   const [d, setD] = useState<DadosJejum | null>(null)
   const [erro, setErro] = useState('')
   const [comecouAs, setComecouAs] = useState('')
@@ -39,7 +39,7 @@ export default function JejumPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-start gap-3">
-        <button onClick={() => navigate(-1)} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
+        <button onClick={() => voltarTela()} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
         <div>
           <h1 className="text-xl font-bold text-zinc-100">Jejum intermitente</h1>
           <p className="text-sm text-zinc-500">{ehAppNativo() ? 'O app avisa quando o jejum terminar.' : 'Acompanhe o tempo do seu jejum.'}</p>

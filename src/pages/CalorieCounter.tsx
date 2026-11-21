@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useHoje } from '../lib/useHoje'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Plus, Trash2, Target, Pencil } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -14,7 +15,7 @@ import Exercicios from '../components/progresso/Exercicios'
 import CartaoAgua from '../components/progresso/CartaoAgua'
 import { ultimoPeso } from '../lib/progresso'
 import { restanteDia } from '../lib/exercicios'
-import { confirmar } from '../components/Confirmacao'
+import { avisar, confirmar } from '../components/Confirmacao'
 
 const ICONE_REFEICAO: Record<Refeicao, string> = { 'Café da manhã': '☕', Almoço: '🍽️', Jantar: '🌙', Lanches: '🍎' }
 
@@ -25,6 +26,12 @@ export default function CalorieCounter() {
   const [peso, setPeso] = useState<number | null>(null)
   useEffect(() => { if (user) ultimoPeso(user.id).then(setPeso).catch(() => {}) }, [user])
   const [data, setData] = useState(hojeLocal)
+  // app aberto de um dia para o outro: quem estava vendo "hoje" passa para o dia novo
+  const hoje = useHoje()
+  const hojeAnterior = useRef(hoje)
+  useEffect(() => {
+    if (hojeAnterior.current !== hoje) { setData(d => (d === hojeAnterior.current ? hoje : d)); hojeAnterior.current = hoje }
+  }, [hoje])
   const [itens, setItens] = useState<RegistroAlimento[]>([])
   const [carregando, setCarregando] = useState(true)
   // O início abre a folha de adicionar direto: /calorias?adicionar=Almoço
@@ -33,9 +40,14 @@ export default function CalorieCounter() {
   const [adicionarEm, setAdicionarEm] = useState<Refeicao | null>(pedido ? grupoRefeicao(pedido) : null)
   useEffect(() => { if (pedido) setParams({}, { replace: true }) }, [pedido, setParams])
 
+  const pedidoAtual = useRef(0)
   const carregar = useCallback(async () => {
     if (!user) return
-    setItens(await registrosDoDia(user.id, data))
+    // trocou de dia rápido: só a resposta do último pedido vale
+    const n = ++pedidoAtual.current
+    const lista = await registrosDoDia(user.id, data).catch(() => null)
+    if (n !== pedidoAtual.current) return
+    if (lista) setItens(lista)
     setCarregando(false)
   }, [user, data])
   useEffect(() => { setCarregando(true); carregar() }, [carregar])
@@ -49,9 +61,11 @@ export default function CalorieCounter() {
   const [editando, setEditando] = useState<RegistroAlimento | null>(null)
   const remover = async (id: string) => {
     if (!(await confirmar('Remover este alimento?', { ok: 'Remover' }))) return
+    const antes = itens
     setItens(p => p.filter(i => i.id !== id))
     setEditando(null)
-    await supabase.from('food_logs').delete().eq('id', id)
+    const { error } = await supabase.from('food_logs').delete().eq('id', id)
+    if (error) { setItens(antes); avisar('Não foi possível remover. Confira a internet e tente de novo.') }
   }
 
   const totais = somarTotais(itens)

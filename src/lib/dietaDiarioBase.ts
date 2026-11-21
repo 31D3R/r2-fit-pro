@@ -4,7 +4,10 @@ import type { PlanoAlimentar } from './openai'
 import { normalizar } from './busca'
 
 /** Marca no diário de qual refeição da dieta veio o registro (para saber o que já foi feito e desfazer). */
-export const origemDieta = (dietaId: string, refeicao: number) => `dieta:${dietaId}:${refeicao}`
+export const origemDieta = (dietaId: string, refeicao: number, nome?: string) => {
+  const n = normalizar(nome ?? '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30)
+  return `dieta:${dietaId}:${refeicao}${n ? `:${n}` : ''}`
+}
 
 /**
  * Alimentos da refeição para o diário. A dieta só traz as calorias de cada alimento: os macros são

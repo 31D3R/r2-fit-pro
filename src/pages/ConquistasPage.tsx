@@ -1,17 +1,17 @@
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useSequencia } from '../lib/sequencia'
 import { Spinner } from '../components/UI'
+import { useVoltar } from '../lib/useVoltar'
 
 export default function ConquistasPage() {
   const { user } = useAuth()
-  const navigate = useNavigate()
+  const voltarTela = useVoltar('/menu')
   const s = useSequencia(user?.id)
   if (!s) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-start gap-3">
-        <button onClick={() => navigate(-1)} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
+        <button onClick={() => voltarTela()} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
         <div>
           <h1 className="text-xl font-bold text-zinc-100">Conquistas</h1>
           <p className="text-sm text-zinc-500">Meta: {s.metaSemanal} treinos por semana (a do seu plano).</p>

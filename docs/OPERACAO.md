@@ -260,10 +260,29 @@ observação; marca "feito" e a próxima vira hoje + intervalo (`src/lib/rotinaB
   O CREF não tem dígito verificador como o CPF: o formato certo é a confirmação (decisão do dono). Opcional: admin → aba
   "Personais (CREF)" abre a consulta do CONFEF e marca como conferido (`admin_personais`, `admin_verificar_cref`).
 - **Busca sem "não encontrado"**: alimento sem resultado na tabela/Open Food Facts → a IA calcula sozinha (gpt-4o-mini), aparece na lista
-  e fica salvo na tabela compartilhada; exercício fora do catálogo → `exercicioPorIA` reconhece (apelido, erro de digitação) e aparece na lista.
+  (só depois que o banco e o Open Food Facts responderam) e vai para a tabela compartilhada só quando a pessoa escolhe o item;
+  falha da IA mostra "Tentar de novo"; exercício fora do catálogo (e sem resultado mesmo sem o filtro "Só meus equipamentos") → `exercicioPorIA` reconhece (apelido, erro de digitação) e aparece na lista.
   "Não encontrado" só quando a IA diz que não existe.
 - **Perguntas** do app (`components/Confirmacao.tsx`, `confirmar()`/`avisar()`) no lugar de `window.confirm/alert`; o voltar do Android fecha.
-- **App Android 1.9.1 (código 12)**: lembretes com ícone de sino (o cronômetro fica só para o contador).
+- **App Android 1.9.1 (código 12)**: lembretes com ícone de sino (o cronômetro fica só para o contador); "Parar" na notificação
+  do contador avisa a página (evento `parado` do ContadorNativo) e encerra o contador na tela, tirando tela sempre ligada e tela cheia;
+  `parar({ liberarTela: true })` na abertura limpa um contador órfão; toque em lembrete com o contador tocando não troca de tela;
+  permissão de notificação pedida uma vez por abertura; tela "Sem conexão" do app com botão "Tentar de novo" (`errorPath`).
+
+### Revisão iPhone/Android (21/11/2026)
+- Botão voltar do Android: registrado uma vez só (antes empilhava a cada troca de tela e o efeito parava o contador nativo).
+- Navegador: com o contador aberto, voltar/deslizar da borda (iPhone) abre "Encerrar o treino?" (entrada extra no histórico).
+- Service worker `r2-app-v2`: não guarda página no lugar de arquivo, só espera 4 s pela rede se houver cópia, apaga só caches `r2-app-*`,
+  vozes/ícones/animações atualizam por trás. Arquivo antigo depois de atualização (`vite:preloadError`) recarrega uma vez.
+- Offline: aviso de alterações recusadas pelo servidor (com dispensar); cabeçalhos da resposta mantidos (contagem); acesso
+  Premium guardado no aparelho por até 7 dias sem internet.
+- Data de "hoje" (`useHoje`) muda sozinha no Início, no diário e na dieta (app aberto de um dia para o outro).
+- Treino concluído em outro dia abre limpo; relatório semanal conta treinos pelo horário local.
+- Refeição da dieta marcada: origem `dieta:<id>:<índice>:<nome>` (dieta editada não marca a refeição errada).
+- iPhone: aviso de Bloqueio Automático quando a tela não fica ligada sozinha (iOS < 18.4 no app da tela inicial); faixa do modo
+  "Tela bloqueada" a 12 kHz (metade da memória); volume pelos botões laterais nesse modo.
+- Outros: modo personal sem Premium mostra convite; modo guardado por conta; perfil com "Tentar de novo"; leitor de código
+  desliga a câmera se o leitor não carregar; cancelar compartilhar não copia o convite; voltar de telas abertas direto vai para o app.
 
 ## Ideias anotadas para fazer depois
 

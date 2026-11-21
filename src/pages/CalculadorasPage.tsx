@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { ANILHAS_PADRAO, FAIXAS, anilhasPorLado, cargaDaFaixa, umRM } from '../lib/calculadoras'
+import { useVoltar } from '../lib/useVoltar'
 
 const n = (s: string) => Number(s.replace(',', '.'))
 const fmt = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
 const CAMPO = 'bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-zinc-100 w-full'
 
 export default function CalculadorasPage() {
-  const navigate = useNavigate()
+  const voltarTela = useVoltar('/menu')
   const [kg, setKg] = useState('')
   const [reps, setReps] = useState('')
   const [total, setTotal] = useState('')
@@ -18,7 +18,7 @@ export default function CalculadorasPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-start gap-3">
-        <button onClick={() => navigate(-1)} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
+        <button onClick={() => voltarTela()} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
         <div>
           <h1 className="text-xl font-bold text-zinc-100">Calculadoras</h1>
           <p className="text-sm text-zinc-500">Carga máxima e anilhas na barra.</p>

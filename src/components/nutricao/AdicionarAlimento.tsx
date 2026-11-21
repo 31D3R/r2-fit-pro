@@ -124,23 +124,29 @@ export default function AdicionarAlimento({ userId, data = '', refeicaoInicial =
     }
   }
 
-  const adicionar = async (itens: (Alimento & { observacao?: string | null })[], origem: string, fechar: boolean) => {
+  const gravando = useRef(false)
+  /** true quando salvou (toque duplo rápido não lança duas vezes). */
+  const adicionar = async (itens: (Alimento & { observacao?: string | null })[], origem: string, fechar: boolean): Promise<boolean> => {
+    if (gravando.current) return false
     setErro('')
     if (onEscolher) {
       onEscolher(itens.map(({ nome, quantidade, calorias, proteina_g, carboidrato_g, gordura_g }) => ({ nome, quantidade, calorias, proteina_g, carboidrato_g, gordura_g })))
       setAdicionados(s => new Set([...s, ...itens.map(chaveAlimento)]))
       if (fechar) onClose(); else avisarSalvo(itens, itens.length === 1 ? 'adicionado à receita' : 'adicionados à receita')
-      return
+      return true
     }
+    gravando.current = true
     setSalvando(true)
     try {
       await registrarAlimentos(userId, data, refeicao, itens, origem)
       setAdicionados(s => new Set([...s, ...itens.map(chaveAlimento)]))
       onSalvo?.()
       if (fechar) onClose(); else avisarSalvo(itens, `${itens.length === 1 ? 'salvo' : 'salvos'} em ${refeicao}`)
+      return true
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível adicionar')
-    } finally { setSalvando(false) }
+      return false
+    } finally { gravando.current = false; setSalvando(false) }
   }
 
   const abrir = (a: Alimento) => { setBase(null); setDetalhe(a); setEditado(null) }
@@ -161,7 +167,7 @@ export default function AdicionarAlimento({ userId, data = '', refeicaoInicial =
     const medidas = base ? medidasDe(base) : []
     return (
       <Folha titulo={titulo} onClose={onClose}
-        rodape={<Button size="lg" className="w-full" loading={salvando} onClick={async () => { await adicionar([final], aba === 'receitas' ? 'receita' : base ? 'busca' : aba === 'favoritos' ? 'favorito' : 'recente', false); fecharDetalhe() }}>{ingrediente ? 'Adicionar à receita' : `Adicionar a ${refeicao}`}</Button>}>
+        rodape={<Button size="lg" className="w-full" loading={salvando} onClick={async () => { if (await adicionar([final], aba === 'receitas' ? 'receita' : base ? 'busca' : aba === 'favoritos' ? 'favorito' : 'recente', false)) fecharDetalhe() }}>{ingrediente ? 'Adicionar à receita' : `Adicionar a ${refeicao}`}</Button>}>
         <div className="flex items-start gap-2 animate-fade-up">
           <div className="flex-1 min-w-0">
             <p className="text-xl font-bold text-zinc-50">{final.nome}</p>

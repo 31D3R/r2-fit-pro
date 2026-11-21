@@ -183,7 +183,9 @@ export default function ExercicioPicker({ gruposDoTreino, equipamentos, onAdicio
 
   // Nada no catálogo: a IA reconhece o exercício (apelido, nome popular, erro de digitação) e ele aparece na lista
   const termo = q.trim()
-  const semResultado = estado === 'pronto' && termo.length >= 3 && resultados.length === 0 && !cardios.length
+  // com "Só meus equipamentos" marcado, o exercício pode existir no catálogo com outro equipamento: aí não chama a IA
+  const existeSemFiltro = useMemo(() => !!mod && termo.length >= 3 && soMeus && mod.buscarExercicios(termo, { limite: 1 }).length > 0, [mod, termo, soMeus])
+  const semResultado = estado === 'pronto' && termo.length >= 3 && resultados.length === 0 && !cardios.length && !existeSemFiltro
   const [daIA, setDaIA] = useState<{ termo: string; ex: ExercicioPlano | null; estado: 'buscando' | 'ok' | 'nao' } | null>(null)
   const tentados = useRef(new Map<string, ExercicioPlano | null>())
   useEffect(() => {

@@ -25,6 +25,8 @@ public class MainActivity extends BridgeActivity {
         if (intent == null) return;
         String url = intent.getStringExtra("url");
         if (url == null || !url.startsWith("/") || getBridge() == null) return;
+        // contador tocando: o toque num lembrete abre o app sem trocar de tela (o treino continua na frente)
+        if (ContadorServico.contadorTocando) { intent.removeExtra("url"); return; }
         intent.removeExtra("url");
         // Navega dentro do site já aberto (não recarrega: um treino em andamento continua); se o site não respondeu, carrega a página
         String js = "window.__r2Navegar ? (window.__r2Navegar(" + org.json.JSONObject.quote(url) + "), 'ok') : 'nao'";

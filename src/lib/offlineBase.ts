@@ -28,11 +28,8 @@ export const tabelaDe = (url: string) => {
 
 /** Filtros simples do PostgREST na URL (coluna=op.valor). Filtros que não sabemos ler (or/and) contam como "combina". */
 export function filtrosDe(url: string): { col: string; op: string; val: string }[] | null {
-  const q = url.split('?')[1] ?? ''
   const out: { col: string; op: string; val: string }[] = []
-  for (const par of q.split('&').filter(Boolean)) {
-    const i = par.indexOf('=')
-    const col = decodeURIComponent(par.slice(0, i)), v = decodeURIComponent(par.slice(i + 1))
+  for (const [col, v] of new URLSearchParams(url.split('?')[1] ?? '')) {
     if (['select', 'order', 'limit', 'offset', 'on_conflict', 'columns'].includes(col)) continue
     if (col === 'or' || col === 'and') return null
     const j = v.indexOf('.')
@@ -50,13 +47,16 @@ export function combina(linha: Record<string, unknown>, url: string): boolean {
     const x = linha[col]
     if (x === undefined) return true // coluna que a gravação não mandou: não dá para saber, mostra
     const s = x === null ? 'null' : String(x)
+    // números comparam como números; datas ISO comparam como texto
+    const num = typeof x === 'number' && val.trim() !== '' && !Number.isNaN(Number(val))
+    const cmp = num ? (x as number) - Number(val) : s < val ? -1 : s > val ? 1 : 0
     switch (op) {
-      case 'eq': return s === val
-      case 'neq': return s !== val
-      case 'gte': return s >= val
-      case 'gt': return s > val
-      case 'lte': return s <= val
-      case 'lt': return s < val
+      case 'eq': return num ? cmp === 0 : s === val
+      case 'neq': return num ? cmp !== 0 : s !== val
+      case 'gte': return cmp >= 0
+      case 'gt': return cmp > 0
+      case 'lte': return cmp <= 0
+      case 'lt': return cmp < 0
       case 'is': return val === 'null' ? x === null : val === 'true' ? x === true : val === 'false' ? x === false : true
       case 'in': return val.replace(/^\(|\)$/g, '').split(',').map(v => v.replace(/^"|"$/g, '')).includes(s)
       case 'like': case 'ilike': {
@@ -69,14 +69,40 @@ export function combina(linha: Record<string, unknown>, url: string): boolean {
 }
 
 const ehUpsert = (op: OpFila) => /resolution=merge-duplicates/.test(op.cabecalhos.Prefer ?? op.cabecalhos.prefer ?? '')
-const conflitoDe = (op: OpFila) => (op.url.match(/[?&]on_conflict=([^&]+)/)?.[1] ?? 'id').split(',').map(decodeURIComponent)
+const conflitoDe = (op: OpFila) => (new URLSearchParams(op.url.split('?')[1] ?? '').get('on_conflict') ?? 'id').split(',').map(s => s.trim())
 
 /** Gravação feita sem internet: insere um id nas linhas novas (para que alterações seguintes achem a linha). */
 export function prepararOp(op: OpFila, novoId: () => string): OpFila {
   const t = tabelaDe(op.url)
   if (op.metodo !== 'POST' || !t || SEM_ID.has(t) || ehUpsert(op)) return op
   const comId = (l: unknown) => (l && typeof l === 'object' && !Array.isArray(l) && !(l as Record<string, unknown>).id ? { ...(l as object), id: novoId() } : l)
-  return { ...op, corpo: Array.isArray(op.corpo) ? op.corpo.map(comId) : comId(op.corpo) }
+  // inserção em lote manda ?columns=...: o id tem que estar na lista, senão o servidor ignora e cria outro
+  let url = op.url
+  const [cam, q = ''] = op.url.split('?')
+  const ps = new URLSearchParams(q)
+  const cols = ps.get('columns')
+  if (cols && !/(^|,)"?id"?(,|$)/.test(cols)) { ps.set('columns', `${cols},"id"`); url = `${cam}?${ps.toString()}` }
+  return { ...op, url, corpo: Array.isArray(op.corpo) ? op.corpo.map(comId) : comId(op.corpo) }
+}
+
+/** order=col.desc,col2.asc e limit da leitura (para a linha nova feita offline entrar no lugar certo). */
+export function ordenarELimitar(url: string, lista: Record<string, unknown>[]): Record<string, unknown>[] {
+  const ps = new URLSearchParams(url.split('?')[1] ?? '')
+  const ordem = (ps.get('order') ?? '').split(',').filter(Boolean).map(o => { const [col, dir] = o.split('.'); return { col, desc: dir === 'desc' } })
+  let out = lista
+  if (ordem.length) out = [...lista].sort((a, b) => {
+    for (const { col, desc } of ordem) {
+      const x = a[col], y = b[col]
+      if (x === y) continue
+      if (x == null) return 1
+      if (y == null) return -1
+      const c = typeof x === 'number' && typeof y === 'number' ? x - y : String(x) < String(y) ? -1 : 1
+      return desc ? -c : c
+    }
+    return 0
+  })
+  const limite = Number(ps.get('limit'))
+  return limite > 0 ? out.slice(0, limite) : out
 }
 
 /** Aplica uma gravação pendente sobre o resultado de uma leitura da mesma tabela. */
@@ -98,7 +124,8 @@ export function aplicarOp(urlLeitura: string, dados: unknown, op: OpFila): unkno
   } else if (op.metodo === 'DELETE') {
     for (let i = lista.length - 1; i >= 0; i--) if (combina(lista[i], op.url)) lista.splice(i, 1)
   }
-  return objeto ? (lista[0] ?? dados) : lista
+  if (objeto) return lista[0] ?? null
+  return op.metodo === 'POST' ? ordenarELimitar(urlLeitura, lista) : lista
 }
 
 /** Resposta que a tela recebe quando a gravação ficou na fila (como se o servidor tivesse aceitado). */

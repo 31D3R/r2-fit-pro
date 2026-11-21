@@ -138,6 +138,12 @@ function DietForm({ onBack, onCreated }: { onBack: () => void; onCreated: (d: Di
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
+    // campos apagados ficam 0: avisa antes de mandar para a IA
+    const fora = (v: number, min: number, max: number) => !Number.isFinite(v) || v < min || v > max
+    if (fora(form.idade, 15, 80)) { setError('Informe a idade (15 a 80 anos).'); return }
+    if (fora(form.peso, 30, 250)) { setError('Informe o peso (30 a 250 kg).'); return }
+    if (fora(form.altura, 140, 220)) { setError('Informe a altura (140 a 220 cm).'); return }
+    if (fora(form.refeicoes_dia, 3, 8)) { setError('Refeições por dia: de 3 a 8.'); return }
     setError(''); setLoading(true)
     try {
       const plano = await gerarDieta(form)
@@ -167,16 +173,16 @@ function DietForm({ onBack, onCreated }: { onBack: () => void; onCreated: (d: Di
           </Select>
           <div className="grid grid-cols-2 gap-3">
             <Select label="Sexo" value={form.sexo} onChange={e => set('sexo', e.target.value)}><option>Masculino</option><option>Feminino</option></Select>
-            <Input label="Idade" type="number" min={15} max={80} value={form.idade} onChange={e => set('idade', +e.target.value)} />
+            <Input label="Idade" type="number" min={15} max={80} value={form.idade || ''} onChange={e => set('idade', e.target.value === '' ? 0 : +e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Peso (kg)" type="number" min={30} max={250} step={0.1} value={form.peso} onChange={e => set('peso', +e.target.value)} />
-            <Input label="Altura (cm)" type="number" min={140} max={220} value={form.altura} onChange={e => set('altura', +e.target.value)} />
+            <Input label="Peso (kg)" type="number" min={30} max={250} step={0.1} value={form.peso || ''} onChange={e => set('peso', e.target.value === '' ? 0 : +e.target.value)} />
+            <Input label="Altura (cm)" type="number" min={140} max={220} value={form.altura || ''} onChange={e => set('altura', e.target.value === '' ? 0 : +e.target.value)} />
           </div>
           <Select label="Nível de atividade física" value={form.nivel_atividade} onChange={e => set('nivel_atividade', e.target.value)}>
             <option>Sedentário</option><option>Levemente ativo</option><option>Moderadamente ativo</option><option>Muito ativo</option><option>Extremamente ativo</option>
           </Select>
-          <Input label="Refeições por dia" type="number" min={3} max={8} value={form.refeicoes_dia} onChange={e => set('refeicoes_dia', +e.target.value)} />
+          <Input label="Refeições por dia" type="number" min={3} max={8} value={form.refeicoes_dia || ''} onChange={e => set('refeicoes_dia', e.target.value === '' ? 0 : +e.target.value)} />
           <Input label="Meta calórica (opcional)" type="number" min={1000} max={6000} placeholder="Deixe em branco para calcular"
             value={form.calorias_alvo ?? ''} onChange={e => set('calorias_alvo', e.target.value ? +e.target.value : undefined)} />
           <Textarea label="Restrições" placeholder="Ex: sem glúten, vegetariano, alergias..." value={form.restricoes} onChange={e => set('restricoes', e.target.value)} rows={2} />

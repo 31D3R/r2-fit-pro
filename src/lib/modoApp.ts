@@ -7,31 +7,43 @@ export type ModoApp = 'aluno' | 'personal'
 const CHAVE = 'r2-modo-app'
 const EVENTO = 'r2-modo-app'
 
-export function lerModo(): ModoApp | null {
-  try { const v = localStorage.getItem(CHAVE); return v === 'aluno' || v === 'personal' ? v : null } catch { return null }
+// por conta: duas pessoas no mesmo celular (ou trocar de conta) não herdam o modo da outra
+const chave = (userId?: string) => (userId ? `${CHAVE}:${userId}` : CHAVE)
+
+export function lerModo(userId?: string): ModoApp | null {
+  try { const v = localStorage.getItem(chave(userId)); return v === 'aluno' || v === 'personal' ? v : null } catch { return null }
 }
 
+// trocado aqui agora: a leitura da conta (que pode chegar antes de a troca ser salva) não desfaz
+const trocadoAgora = new Set<string>()
+
 export function definirModo(m: ModoApp, userId?: string) {
-  try { localStorage.setItem(CHAVE, m) } catch { /* sem armazenamento */ }
+  if (userId) trocadoAgora.add(userId)
+  try { localStorage.setItem(chave(userId), m) } catch { /* sem armazenamento */ }
   window.dispatchEvent(new Event(EVENTO))
   if (userId) salvarPrefApp(userId, 'modo_app', m).catch(() => {})
 }
 
 /** Modo atual; null = ainda não escolheu (o Início pergunta). */
 export function useModoApp(userId: string | undefined): ModoApp | null {
-  const [modo, setModo] = useState<ModoApp | null>(lerModo)
+  const [modo, setModo] = useState<ModoApp | null>(() => lerModo(userId))
   useEffect(() => {
-    const atualizar = () => setModo(lerModo())
+    setModo(lerModo(userId))
+    const atualizar = () => setModo(lerModo(userId))
     window.addEventListener(EVENTO, atualizar)
     return () => window.removeEventListener(EVENTO, atualizar)
-  }, [])
-  // aparelho novo: usa o que a pessoa escolheu em outro aparelho
+  }, [userId])
+  // o que está salvo na conta vale (mudou em outro aparelho, ou aparelho novo)
   useEffect(() => {
-    if (!userId || lerModo()) return
+    if (!userId) return
+    let vivo = true
     carregarPrefsApp(userId).then(p => {
       const v = p.modo_app
-      if ((v === 'aluno' || v === 'personal') && !lerModo()) { try { localStorage.setItem(CHAVE, v) } catch { /* ignore */ } setModo(v) }
+      if (!vivo || trocadoAgora.has(userId) || (v !== 'aluno' && v !== 'personal') || v === lerModo(userId)) return
+      try { localStorage.setItem(chave(userId), v) } catch { /* ignore */ }
+      setModo(v)
     }).catch(() => {})
+    return () => { vivo = false }
   }, [userId])
   return modo
 }

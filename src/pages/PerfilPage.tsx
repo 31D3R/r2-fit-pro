@@ -23,11 +23,14 @@ export default function PerfilPage() {
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
   const inputFoto = useRef<HTMLInputElement>(null)
 
+  const [falhou, setFalhou] = useState(false)
+  const [tentativa, setTentativa] = useState(0)
   useEffect(() => {
     if (!user) return
+    setFalhou(false)
     supabase.from('profiles').select('nome, telefone, data_nascimento, avatar_url, email, created_at, versao_termos, aceite_termos_em')
       .eq('id', user.id).single().then(async ({ data }) => {
-        if (!data) return
+        if (!data) { setFalhou(true); return }
         setPerfil(data as Perfil)
         setNome(data.nome ?? user.user_metadata?.nome ?? ''); setTelefone(data.telefone ?? ''); setNascimento(data.data_nascimento ?? '')
         // Data de nascimento informada na meta diária vale para o perfil também
@@ -40,8 +43,8 @@ export default function PerfilPage() {
           const { data: s } = await supabase.storage.from('avatars').createSignedUrl(data.avatar_url, 3600)
           setFotoUrl(s?.signedUrl ?? null)
         }
-      })
-  }, [user])
+      }, () => setFalhou(true))
+  }, [user, tentativa])
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,6 +87,13 @@ export default function PerfilPage() {
     if (!error) { setNovoEmail(''); setTrocandoEmail(false) }
   }
 
+  if (!perfil && falhou) return (
+    <div className="text-center py-16">
+      <p className="text-zinc-300">Não foi possível carregar o seu perfil.</p>
+      <p className="text-sm text-zinc-500 mt-1">Confira a internet e tente de novo.</p>
+      <Button className="mt-4" onClick={() => setTentativa(t => t + 1)}>Tentar de novo</Button>
+    </div>
+  )
   if (!perfil) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>
 
   return (

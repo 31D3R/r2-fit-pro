@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { limparOffline, sincronizar } from '../lib/offline'
+import { lerFila, limparOffline, sincronizar } from '../lib/offline'
+import { confirmar } from '../components/Confirmacao'
 
 interface AuthContextValue {
   user: User | null
@@ -40,10 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = async () => {
-    // envia o que foi registrado sem internet antes de sair; depois apaga o que estava guardado no aparelho
+    // envia o que foi registrado sem internet antes de sair; com algo ainda pendente, avisa (sair apagaria)
     await sincronizar().catch(() => {})
-    await supabase.auth.signOut()
-    limparOffline()
+    const pendentes = lerFila().length
+    if (pendentes && !(await confirmar(`${pendentes} ${pendentes === 1 ? 'registro feito' : 'registros feitos'} sem internet ainda não ${pendentes === 1 ? 'foi enviado' : 'foram enviados'}.`, {
+      detalhe: 'Conecte à internet e espere sincronizar. Se sair agora, eles se perdem.', ok: 'Sair mesmo assim', cancelar: 'Ficar', perigo: true,
+    }))) throw new Error('cancelado')
+    const { error } = await supabase.auth.signOut()
+    if (!error) limparOffline()
   }
 
   return (

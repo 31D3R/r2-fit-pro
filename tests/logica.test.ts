@@ -513,6 +513,14 @@ await t('lista de compras: soma gramas, unidades e multiplica pelos dias', () =>
   assert.equal(l['Pão integral'], '14 fatias'); assert.equal(l['Arroz'], '28 colheres de sopa'); assert.equal(l['Banana'], '7x')
 })
 
+await t('lista de compras: singular e plural em português (pães, colheres)', () => {
+  const ref = [{ alimentos: [{ nome: 'Pão francês', quantidade: '2 pães' }, { nome: 'Aveia', quantidade: '1 colher de sopa' }, { nome: 'Pastel', quantidade: '1 pastel' }] },
+    { alimentos: [{ nome: 'Pão francês', quantidade: '1 pão' }, { nome: 'Aveia', quantidade: '2 colheres de sopa' }] }]
+  const l = Object.fromEntries(listaDeCompras(ref, 1).map(i => [i.nome, i.total]))
+  assert.equal(l['Pão francês'], '3 pães'); assert.equal(l['Aveia'], '3 colheres de sopa')
+  assert.equal(Object.fromEntries(listaDeCompras(ref, 2).map(i => [i.nome, i.total]))['Pastel'], '2 pastéis')
+})
+
 await t('PDF: arquivo válido com acentos, várias páginas e sem emoji', () => {
   assert.equal(winAnsi('Ação (teste) 💪'), 'A\xe7\xe3o \\(teste\\) ')
   const d = new DocPdf('Treino · Teste')

@@ -43,7 +43,9 @@ export default function BuscaAlimentos({ q, onAbrir, onAdicionarRapido }: {
   const termo = q.trim()
   // Nada na tabela nem nos produtos: a IA calcula sozinha e o resultado aparece na lista (e fica salvo na tabela)
   const [daIA, setDaIA] = useState<{ termo: string; item: ItemBase | null; estado: 'buscando' | 'ok' | 'falhou' } | null>(null)
-  const tentados = useRef(new Map<string, ItemBase | null>())
+  const tentados = useRef(new Map<string, ItemBase>())
+  const [buscaFeita, setBuscaFeita] = useState('')
+  const [novaTentativa, setNovaTentativa] = useState(0)
 
   useEffect(() => { carregarTaco().then(setTaco) }, [])
 
@@ -52,12 +54,15 @@ export default function BuscaAlimentos({ q, onAbrir, onAdicionarRapido }: {
     setErro('')
     if (termo.length < 2) { setBanco([]); setProdutos([]); return }
     let vivo = true
-    const t1 = setTimeout(() => { buscarNoBanco(termo).then(r => vivo && setBanco(r)).catch(() => {}) }, 300)
+    // a IA só entra depois que o banco e os produtos responderam para este termo
+    let fimBanco = false, fimProdutos = termo.length < 3
+    const fim = () => { if (vivo && fimBanco && fimProdutos) setBuscaFeita(termo) }
+    const t1 = setTimeout(() => { buscarNoBanco(termo).then(r => vivo && setBanco(r)).catch(() => {}).finally(() => { fimBanco = true; fim() }) }, 300)
     const ctl = new AbortController()
     const t2 = setTimeout(() => {
       if (termo.length < 3) return
       setBuscandoProdutos(true)
-      buscarProdutos(termo, ctl.signal).then(r => vivo && setProdutos(r)).catch(() => {}).finally(() => vivo && setBuscandoProdutos(false))
+      buscarProdutos(termo, ctl.signal).then(r => vivo && setProdutos(r)).catch(() => {}).finally(() => { if (vivo) setBuscandoProdutos(false); fimProdutos = true; fim() })
     }, 900)
     return () => { vivo = false; clearTimeout(t1); clearTimeout(t2); ctl.abort() }
   }, [termo])
@@ -74,25 +79,39 @@ export default function BuscaAlimentos({ q, onAbrir, onAdicionarRapido }: {
     return lista
   }, [termo, taco, banco, produtos])
 
-  const semResultado = !!termo && termo.length >= 3 && taco !== null && !buscandoProdutos && resultados.length === 0
+  const semResultado = !!termo && termo.length >= 3 && taco !== null && !buscandoProdutos && buscaFeita === termo && resultados.length === 0
   useEffect(() => {
     if (!semResultado) return
     const chave = semAcento(termo)
-    if (tentados.current.has(chave)) { const item = tentados.current.get(chave)!; setDaIA({ termo, item, estado: item ? 'ok' : 'falhou' }); return }
+    const ja = tentados.current.get(chave)
+    if (ja) { setDaIA({ termo, item: ja, estado: 'ok' }); return }
     let vivo = true
     setDaIA({ termo, item: null, estado: 'buscando' })
     // espera a pessoa parar de digitar
     const t = setTimeout(() => {
-      estimarAlimentoBase(termo).then(async e => {
-        const base = deEstimativa(e, 'ia')
-        const item = await guardar(base, base).catch(() => base)
+      estimarAlimentoBase(termo).then(e => {
+        // só vai para a tabela compartilhada quando a pessoa escolher o alimento
+        const item = deEstimativa(e, 'ia')
         tentados.current.set(chave, item)
         if (vivo) setDaIA({ termo, item, estado: 'ok' })
-      }).catch(() => { tentados.current.set(chave, null); if (vivo) setDaIA({ termo, item: null, estado: 'falhou' }) })
-    }, 700)
+      }).catch(() => { if (vivo) setDaIA({ termo, item: null, estado: 'falhou' }) })
+    }, 400)
     return () => { vivo = false; clearTimeout(t) }
-  }, [semResultado, termo])
+  }, [semResultado, termo, novaTentativa])
   const listaFinal = semResultado && daIA?.termo === termo && daIA.item ? [daIA.item] : resultados
+  /** Item calculado pela IA ainda não salvo: salva na tabela compartilhada na hora em que a pessoa escolhe. */
+  const escolhido = async (item: ItemBase) => {
+    if (!item.id.startsWith('novo-')) return item
+    const salvo = await guardar(item, item)
+    tentados.current.set(semAcento(termo), salvo)
+    return salvo
+  }
+  const [abrindo, setAbrindo] = useState(false)
+  const usar = async (item: ItemBase, f: (i: ItemBase) => void) => {
+    if (abrindo) return
+    setAbrindo(true)
+    try { f(await escolhido(item)) } finally { setAbrindo(false) }
+  }
 
   const lerCodigo = async (c: string) => {
     setLeitor(false); setErro('')
@@ -170,14 +189,14 @@ export default function BuscaAlimentos({ q, onAbrir, onAdicionarRapido }: {
                 return (
                   <li key={item.id} className="animate-fade-up" style={{ animationDelay: `${Math.min(idx, 10) * 25}ms` }}>
                     <div className="flex items-center gap-1 bg-zinc-800/40 hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl pr-1.5 transition">
-                      <button type="button" onClick={() => onAbrir(item)} className="flex-1 min-w-0 text-left pl-3.5 py-2">
+                      <button type="button" onClick={() => usar(item, onAbrir)} className="flex-1 min-w-0 text-left pl-3.5 py-2">
                         <span className="block text-sm font-semibold text-zinc-100 truncate">{item.nome}</span>
                         <span className="flex items-center gap-1 text-xs text-zinc-500 min-w-0">
                           <span className="shrink-0 rounded bg-zinc-700/60 px-1 text-[10px] font-semibold text-zinc-300">{ROTULO_FONTE[item.fonte]}</span>
                           <span className="truncate">{fmt(porcao.calorias)} kcal · {porcao.quantidade}</span><ChevronRight className="w-3.5 h-3.5 shrink-0" />
                         </span>
                       </button>
-                      <button type="button" aria-label={`Adicionar ${item.nome}`} onClick={() => onAdicionarRapido(item)}
+                      <button type="button" aria-label={`Adicionar ${item.nome}`} onClick={() => usar(item, onAdicionarRapido)} disabled={abrindo}
                         className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-green-500/15 text-green-400 hover:bg-green-500/25 transition active:scale-90"><Plus className="w-5 h-5" /></button>
                     </div>
                   </li>
@@ -185,7 +204,8 @@ export default function BuscaAlimentos({ q, onAbrir, onAdicionarRapido }: {
               })}
               {buscandoProdutos && <li className="flex items-center gap-2 text-xs text-zinc-500 px-1 py-1"><Spinner size="sm" />Procurando produtos industrializados…</li>}
               {semResultado && daIA?.termo === termo && daIA.estado === 'buscando' && <li className="flex items-center gap-2 text-xs text-zinc-500 px-1 py-1"><Spinner size="sm" />Procurando "{termo}"…</li>}
-              {semResultado && termo.length >= 3 && daIA?.termo === termo && daIA.estado === 'falhou' && <li className="text-sm text-zinc-400 px-1 py-2">Não deu para calcular "{termo}" agora. Confira a internet ou tente outro nome.</li>}
+              {semResultado && termo.length >= 3 && daIA?.termo === termo && daIA.estado === 'falhou' && <li className="text-sm text-zinc-400 px-1 py-2">Não deu para calcular "{termo}" agora. Confira a internet ou tente outro nome.
+                <button type="button" onClick={() => setNovaTentativa(n => n + 1)} className="block mt-1.5 font-semibold text-green-400 hover:text-green-300">↻ Tentar de novo</button></li>}
               {!buscandoProdutos && resultados.length === 0 && termo.length < 3 && <li className="text-sm text-zinc-400 px-1 py-2">Digite pelo menos 3 letras.</li>}
               <li>
                 {listaFinal.length > 0 && <button type="button" onClick={calcularComIA} disabled={trabalhando === 'ia'}

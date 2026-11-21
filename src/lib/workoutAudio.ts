@@ -155,7 +155,12 @@ export function estadoEm(c: Cronograma, t: number): Estado {
 
 // --- Renderização da faixa (WAV PCM 16 bits mono) ---
 
-export function renderizarFaixa(c: Cronograma, clips: Clipes, sr: number): Blob {
+/**
+ * `sr` é a taxa da faixa e `srClipe` a dos clipes. Faixa com taxa menor (metade) ocupa metade da memória:
+ * importante no iPhone, que fecha a página se um treino longo virar um arquivo grande demais.
+ */
+export function renderizarFaixa(c: Cronograma, clips: Clipes, sr: number, srClipe = sr): Blob {
+  const passo = Math.max(1, Math.round(srClipe / sr))
   const n = Math.ceil(c.total * sr)
   const buf = new ArrayBuffer(44 + n * 2)
   const dv = new DataView(buf)
@@ -169,8 +174,12 @@ export function renderizarFaixa(c: Cronograma, clips: Clipes, sr: number): Blob 
     const clip = clips[cue.clip]
     if (!clip) continue
     const off = Math.round(cue.t * sr)
-    for (let i = 0; i < clip.length && off + i < n; i++) {
-      const v = pcm[off + i] + clip[i] * 32767
+    const tam = Math.floor(clip.length / passo)
+    for (let i = 0; i < tam && off + i < n; i++) {
+      // média de `passo` amostras do clipe (corta o agudo que viraria chiado na taxa menor)
+      let x = 0
+      for (let k = 0; k < passo; k++) x += clip[i * passo + k]
+      const v = pcm[off + i] + (x / passo) * 32767
       pcm[off + i] = v > 32767 ? 32767 : v < -32768 ? -32768 : v
     }
   }
@@ -263,6 +272,8 @@ export function maximizar(s: Float32Array, sr: number, { alvo = 0.55, ganhoMax =
 // --- Carregamento das vozes ---
 
 export const TAXA = 24000
+/** Faixa inteira do modo "tela bloqueada": metade da taxa (voz continua clara, metade da memória). */
+const TAXA_FAIXA = 12000
 let cacheClipes: Promise<Clipes | null> | null = null
 
 export function decodificar(dados: ArrayBuffer): Promise<AudioBuffer> {
@@ -488,7 +499,7 @@ export class TreinoPlayer {
     if (this.modo === 'nativo' && opcoes.avisosRelogio !== false) this.avisos = avisosDasFases(this.crono, Array.isArray(cfg) ? cfg : [cfg])
     if (this.modo === 'mix' || this.modo === 'audio') this.clips = clips
     if (this.modo === 'audio' && clips) {
-      const blob = renderizarFaixa(this.crono, clips, TAXA)
+      const blob = renderizarFaixa(this.crono, clips, TAXA_FAIXA, TAXA)
       this.url = URL.createObjectURL(blob)
       const a = new Audio()
       a.preload = 'auto'
@@ -596,7 +607,7 @@ export class TreinoPlayer {
       const a = this.audio
       const tocando = !a.paused
       const velha = this.url
-      this.url = URL.createObjectURL(renderizarFaixa(this.crono, this.clips, TAXA))
+      this.url = URL.createObjectURL(renderizarFaixa(this.crono, this.clips, TAXA_FAIXA, TAXA))
       this.pausaPedida = tocando
       a.src = this.url
       this.posPendente = t

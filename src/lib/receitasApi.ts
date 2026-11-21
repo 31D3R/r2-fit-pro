@@ -42,7 +42,7 @@ export async function apagarReceita(id: string) {
   if (error) throw new Error(error.message)
 }
 
-/** Tudo que o relatório da semana precisa (7 dias a partir de `inicio`). */
+/** Tudo que o relatório da semana precisa (7 dias a partir de `inicio`). Os limites do treino são no horário do aparelho (não UTC). */
 export async function dadosDaSemana(userId: string, inicio: string, fim: string) {
   const intervalo = <T>(tabela: string, campos: string) =>
     supabase.from(tabela).select(campos).eq('user_id', userId).gte('data', inicio).lte('data', fim).then(r => (r.data as T[]) ?? [])
@@ -53,7 +53,7 @@ export async function dadosDaSemana(userId: string, inicio: string, fim: string)
     supabase.from('registros_peso').select('data, peso_kg').eq('user_id', userId).lte('data', fim).order('data', { ascending: false }).limit(20)
       .then(r => ((r.data as { data: string; peso_kg: number }[]) ?? []).map(p => ({ ...p, peso_kg: Number(p.peso_kg) }))),
     supabase.from('sessoes_treino').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('feito', true)
-      .gte('data_inicio', `${inicio}T00:00:00`).lte('data_inicio', `${fim}T23:59:59`).then(r => r.count ?? 0),
+      .gte('data_inicio', new Date(`${inicio}T00:00:00`).toISOString()).lte('data_inicio', new Date(`${fim}T23:59:59.999`).toISOString()).then(r => r.count ?? 0),
   ])
   const num = (v: unknown) => Number(v ?? 0)
   return {

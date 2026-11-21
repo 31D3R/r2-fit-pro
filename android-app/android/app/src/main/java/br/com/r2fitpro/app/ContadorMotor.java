@@ -106,6 +106,8 @@ public final class ContadorMotor {
     /** Agenda as falas a partir de `desde` segundos do cronograma (retomar depois de pausa usa o mesmo). */
     public void tocar(List<Cue> cues, List<Aviso> avisos, double desde, String titulo) {
         h.removeCallbacksAndMessages(TOKEN);
+        // fala de antes (pulou série/descanso no meio de uma contagem) não continua por cima da nova
+        pool.autoPause();
         this.titulo = titulo != null ? titulo : "Contador";
         long base = SystemClock.uptimeMillis();
         long fim = base;
@@ -118,7 +120,8 @@ public final class ContadorMotor {
         }
         // Avisos de fase (notificação que vibra e vai para o relógio); a fase em andamento ao retomar também avisa
         for (Aviso a : avisos) {
-            if (a.t + a.dur < desde) continue;
+            // fase que termina exatamente onde retomou (pulou para o fim dela): não avisa de novo
+            if (a.t + a.dur <= desde + 0.05) continue;
             double resta = Math.max(0, a.t + a.dur - Math.max(desde, a.t));
             long quando = base + Math.max(0, Math.round((a.t - desde) * 1000));
             h.postAtTime(() -> ContadorServico.avisarFase(ctx, a.titulo, a.texto, Math.round(resta * 1000)), TOKEN, quando + 30);

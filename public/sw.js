@@ -1,10 +1,11 @@
 // Service worker: instalar na tela inicial, receber lembretes e abrir sem internet.
 // Com internet, as páginas vêm sempre do site (versão mais nova) e uma cópia fica guardada;
 // sem internet, abre a cópia. Arquivos com nome versionado (/assets), ícones, vozes e animações ficam guardados ao usar.
-const CACHE = 'r2-app-v1'
+const CACHE = 'r2-app-v2'
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', e => e.waitUntil((async () => {
-  for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k)
+  // só as cópias antigas do app (as vozes de nomes, r2-voz-*, ficam)
+  for (const k of await caches.keys()) if (k.startsWith('r2-app-') && k !== CACHE) await caches.delete(k)
   await self.clients.claim()
 })()))
 
@@ -18,15 +19,17 @@ self.addEventListener('fetch', e => {
   if (req.mode === 'navigate' && url.origin === self.location.origin && !url.pathname.startsWith('/baixar')) {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE)
+      const copia = await cache.match('/index.html')
       try {
+        // internet lenta: espera 4 s só se houver cópia para mostrar; sem cópia, espera a rede o tempo que precisar
         const ctl = new AbortController()
-        const t = setTimeout(() => ctl.abort(), 4000)
+        const t = copia ? setTimeout(() => ctl.abort(), 4000) : null
         const r = await fetch(req, { signal: ctl.signal })
-        clearTimeout(t)
-        if (r.ok) cache.put('/index.html', r.clone())
+        if (t) clearTimeout(t)
+        if (r.ok && (r.headers.get('content-type') || '').includes('text/html')) cache.put('/index.html', r.clone())
         return r
       } catch {
-        return (await cache.match('/index.html')) || Response.error()
+        return copia || Response.error()
       }
     })())
     return
@@ -36,10 +39,15 @@ self.addEventListener('fetch', e => {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE)
       const tem = await cache.match(req)
-      if (tem) return tem
-      const r = await fetch(req)
-      if (r.ok && r.status === 200 && Number(r.headers.get('content-length') || 0) < 5000000) cache.put(req, r.clone())
-      return r
+      const buscar = fetch(req).then(r => {
+        // nunca guarda uma página no lugar de um arquivo (arquivo que não existe mais depois de uma atualização)
+        const tipo = r.headers.get('content-type') || ''
+        if (r.ok && r.status === 200 && !tipo.includes('text/html') && Number(r.headers.get('content-length') || 0) < 5000000) cache.put(req, r.clone())
+        return r
+      })
+      // /assets têm nome com versão (não mudam): da cópia. Vozes, ícones e animações: da cópia e atualiza por trás
+      if (tem) { if (!url.pathname.startsWith('/assets/')) e.waitUntil(buscar.catch(() => {})); return tem }
+      return buscar
     })())
   }
 })

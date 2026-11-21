@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Camera, Ruler, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -7,6 +6,7 @@ import { redimensionarImagem } from '../lib/imagem'
 import { dataLocalHoje } from '../lib/treinoModel'
 import { Spinner } from '../components/UI'
 import { confirmar } from '../components/Confirmacao'
+import { useVoltar } from '../lib/useVoltar'
 
 // Evolução: medidas do corpo e fotos de antes e depois (fotos num armazenamento privado: só a própria pessoa vê).
 
@@ -25,12 +25,12 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 1 
 
 export default function EvolucaoPage() {
   const { user } = useAuth()
-  const navigate = useNavigate()
+  const voltarTela = useVoltar('/menu')
   const [aba, setAba] = useState<'medidas' | 'fotos'>('medidas')
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-start gap-3">
-        <button onClick={() => navigate(-1)} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
+        <button onClick={() => voltarTela()} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
         <div>
           <h1 className="text-xl font-bold text-zinc-100">Evolução</h1>
           <p className="text-sm text-zinc-500">Medidas e fotos de antes e depois. Só você vê.</p>
@@ -177,10 +177,18 @@ function Fotos({ userId }: { userId: string }) {
               className={`flex-1 py-2 rounded-lg text-sm font-semibold border ${pose === k ? 'bg-green-500/10 border-green-500/40 text-green-400' : 'bg-zinc-800 border-zinc-700 text-zinc-300'}`}>{r}</button>
           ))}
         </div>
-        <label className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold ${enviando ? 'bg-zinc-800 text-zinc-500' : 'bg-green-500 text-zinc-950'}`}>
-          <Camera className="w-4 h-4" />{enviando ? 'Enviando…' : `Adicionar foto de hoje (${POSES.find(p => p[0] === pose)![1].toLowerCase()})`}
-          <input type="file" accept="image/*" className="hidden" disabled={enviando} onChange={e => { enviar(e.target.files?.[0]); e.target.value = '' }} />
-        </label>
+        <p className="text-sm font-semibold text-zinc-200">{enviando ? 'Enviando…' : `Foto de hoje (${POSES.find(p => p[0] === pose)![1].toLowerCase()})`}</p>
+        {/* duas opções: no app Android o seletor de arquivos sozinho não oferece a câmera */}
+        <div className="grid grid-cols-2 gap-2">
+          <label className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold ${enviando ? 'bg-zinc-800 text-zinc-500' : 'bg-green-500 text-zinc-950'}`}>
+            <Camera className="w-4 h-4" />Tirar foto
+            <input type="file" accept="image/*" capture="user" className="hidden" disabled={enviando} onChange={e => { enviar(e.target.files?.[0]); e.target.value = '' }} />
+          </label>
+          <label className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border ${enviando ? 'bg-zinc-800 text-zinc-500 border-zinc-800' : 'bg-zinc-800 text-zinc-100 border-zinc-700'}`}>
+            Da galeria
+            <input type="file" accept="image/*" className="hidden" disabled={enviando} onChange={e => { enviar(e.target.files?.[0]); e.target.value = '' }} />
+          </label>
+        </div>
         {erro && <p role="alert" className="text-sm text-red-400">{erro}</p>}
         <p className="text-[11px] text-zinc-500">Dica: mesma luz, mesmo lugar e mesma distância. As fotos ficam guardadas só para você.</p>
       </div>

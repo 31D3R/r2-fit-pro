@@ -28,6 +28,31 @@ import java.util.Map;
 @CapacitorPlugin(name = "ContadorNativo")
 public class ContadorNativoPlugin extends Plugin {
 
+    /** Plugin da página aberta: o "Parar" da notificação avisa a página para fechar o contador na tela também. */
+    private static volatile ContadorNativoPlugin atual;
+    private static boolean pediuNotificacao = false;
+
+    @Override
+    public void load() { atual = this; }
+
+    /** Chamado pelo serviço quando a pessoa toca em "Parar" na notificação. */
+    static void avisarParado() {
+        ContadorNativoPlugin p = atual;
+        if (p == null || p.getActivity() == null) return;
+        p.getActivity().runOnUiThread(() -> {
+            p.liberarTela();
+            p.notifyListeners("parado", new JSObject());
+        });
+    }
+
+    /** Tira a tela sempre ligada e a tela cheia (o contador fechou). */
+    void liberarTela() {
+        if (getActivity() == null) return;
+        android.view.Window w = getActivity().getWindow();
+        w.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        androidx.core.view.WindowCompat.getInsetsController(w, w.getDecorView()).show(androidx.core.view.WindowInsetsCompat.Type.systemBars());
+    }
+
     /** clipes: { chave: { wav: base64, dur: segundos } } */
     @PluginMethod
     public void preparar(PluginCall call) {
@@ -91,7 +116,12 @@ public class ContadorNativoPlugin extends Plugin {
     public void pausar(PluginCall call) { ContadorMotor.get(getContext()).pausar(); call.resolve(); }
 
     @PluginMethod
-    public void parar(PluginCall call) { ContadorMotor.get(getContext()).parar(); call.resolve(); }
+    public void parar(PluginCall call) {
+        ContadorMotor.get(getContext()).parar();
+        // contador que ficou de antes (página recarregada): a tela não fica presa ligada nem em tela cheia
+        if (Boolean.TRUE.equals(call.getBoolean("liberarTela", false)) && getActivity() != null) getActivity().runOnUiThread(this::liberarTela);
+        call.resolve();
+    }
 
     @PluginMethod
     public void volume(PluginCall call) {
@@ -120,7 +150,10 @@ public class ContadorNativoPlugin extends Plugin {
         call.resolve();
     }
 
+    /** Pede a permissão de notificação uma vez por abertura do app (não a cada série). */
     private void pedirNotificacao() {
+        if (pediuNotificacao) return;
+        pediuNotificacao = true;
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(getContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(getActivity(), new String[] { Manifest.permission.POST_NOTIFICATIONS }, 4711);
         }

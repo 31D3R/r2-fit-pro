@@ -31,6 +31,14 @@ export default function Confirmacoes() {
     definirFechamentoModal(() => { responder(false); return true })
     return () => definirFechamentoModal(null)
   })
+  // a página de trás não rola com a pergunta aberta (no iPhone o dedo rolava a tela por baixo)
+  const aberto = !!pedido
+  useEffect(() => {
+    if (!aberto) return
+    const antes = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = antes }
+  }, [aberto])
   const responder = (v: boolean) => { if (pedido) { pedido.resolver(v); setPedido(null) } }
   if (!pedido) return null
   return (
@@ -40,10 +48,11 @@ export default function Confirmacoes() {
         <p className="text-base font-bold text-zinc-50">{pedido.texto}</p>
         {pedido.detalhe && <p className="text-sm text-zinc-400 mt-1">{pedido.detalhe}</p>}
         <div className="flex flex-col gap-2 mt-5">
-          <button type="button" autoFocus onClick={() => responder(true)}
+          {/* ação perigosa: o foco fica no Cancelar (Enter no teclado não apaga sem querer) */}
+          <button type="button" autoFocus={!pedido.perigo || !pedido.cancelar} onClick={() => responder(true)}
             className={`w-full py-3 rounded-2xl font-bold ${pedido.perigo ? 'bg-red-500/90 text-white' : 'bg-green-500 text-zinc-950'}`}>{pedido.ok}</button>
           {pedido.cancelar && (
-            <button type="button" onClick={() => responder(false)} className="w-full py-3 rounded-2xl font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700">{pedido.cancelar}</button>
+            <button type="button" autoFocus={pedido.perigo} onClick={() => responder(false)} className="w-full py-3 rounded-2xl font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700">{pedido.cancelar}</button>
           )}
         </div>
       </div>

@@ -9,6 +9,7 @@ import type { Atividade, Objetivo, Sexo } from '../lib/metas'
 import { useMeta, salvarMeta } from '../lib/nutricao'
 import { Button, Input, Spinner } from '../components/UI'
 import { useContagem, fmt } from '../components/nutricao/Graficos'
+import { useVoltar } from '../lib/useVoltar'
 
 const ICONE_OBJETIVO: Record<Objetivo, string> = { perder: '🔥', manter: '⚖️', ganhar: '💪' }
 
@@ -35,6 +36,7 @@ const inteiro = (s: string) => (s.replace(/\D/g, '') === '' ? NaN : Number(s.rep
 export default function MetaPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const voltarTela = useVoltar('/dashboard')
   const { meta, carregando } = useMeta(user?.id)
   const [passo, setPasso] = useState(0)
   const [objetivo, setObjetivo] = useState<Objetivo>('perder')
@@ -78,7 +80,7 @@ export default function MetaPage() {
 
   const temRitmo = objetivo !== 'manter'
   const avancar = () => setPasso(p => (p === 2 && !temRitmo ? 4 : p + 1))
-  const voltar = () => (passo === 0 ? navigate(-1) : setPasso(p => (p === 4 && !temRitmo ? 2 : p - 1)))
+  const voltar = () => (passo === 0 ? voltarTela() : setPasso(p => (p === 4 && !temRitmo ? 2 : p - 1)))
 
   const salvar = async () => {
     if (!user || !final || !calculada) return

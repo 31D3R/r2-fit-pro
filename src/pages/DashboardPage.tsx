@@ -8,7 +8,8 @@ import { Spinner } from '../components/UI'
 import { useAcesso } from '../context/AcessoContext'
 import { useMeta, registrosDoDia, somarTotais } from '../lib/nutricao'
 import type { RegistroAlimento } from '../lib/nutricao'
-import { REFEICOES, grupoRefeicao, hojeLocal } from '../lib/diario'
+import { REFEICOES, grupoRefeicao } from '../lib/diario'
+import { useHoje } from '../lib/useHoje'
 import type { Refeicao } from '../lib/diario'
 import { AnelCalorias, BarraMacro, fmt } from '../components/nutricao/Graficos'
 import InstalarApp from '../components/InstalarApp'
@@ -37,6 +38,7 @@ const ICONE_REFEICAO: Record<Refeicao, string> = { 'Café da manhã': '☕', Alm
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const hoje = useHoje()
   const { premium, carregando: carregandoAcesso } = useAcesso()
   const { meta, carregando: carregandoMeta, recarregar: recarregarMeta } = useMeta(user?.id)
   const [exercicios, setExercicios] = useState<Exercicio[]>([])
@@ -64,9 +66,9 @@ export default function DashboardPage() {
       const [{ data: dietas }, { data: treinos }, regs, exs, ps] = await Promise.all([
         supabase.from('dietas').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
         supabase.from('treinos').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
-        registrosDoDia(user.id, hojeLocal()),
-        exerciciosDoDia(user.id, hojeLocal()).catch(() => [] as Exercicio[]),
-        historicoPeso(user.id, somarDias(hojeLocal(), -30)).catch(() => [] as PontoPeso[]),
+        registrosDoDia(user.id, hoje).catch(() => [] as RegistroAlimento[]),
+        exerciciosDoDia(user.id, hoje).catch(() => [] as Exercicio[]),
+        historicoPeso(user.id, somarDias(hoje, -30)).catch(() => [] as PontoPeso[]),
       ])
       setExercicios(exs)
       setPesos(ps)
@@ -75,8 +77,8 @@ export default function DashboardPage() {
       setRegistros(regs)
       setLoading(false)
     }
-    load()
-  }, [user])
+    load().catch(() => setLoading(false))
+  }, [user, hoje])
 
   if (loading || carregandoMeta) {
     return (
@@ -94,8 +96,17 @@ export default function DashboardPage() {
           <p className="text-violet-300 text-xs font-semibold uppercase tracking-wide">Painel do personal</p>
           <h1 className="text-2xl font-bold text-zinc-50 mt-0.5">{greeting()}, {nomeUsuario}</h1>
         </div>
-        <ListaAlunos />
-        <ModoPersonal userId={user.id} nomePadrao={user.user_metadata?.nome ?? ''} />
+        {premium || carregandoAcesso ? <>
+          <ListaAlunos />
+          <ModoPersonal userId={user.id} nomePadrao={user.user_metadata?.nome ?? ''} />
+        </> : (
+          <div className="bg-violet-500/10 border border-violet-500/30 rounded-3xl p-5 animate-fade-up">
+            <p className="font-bold text-zinc-50">Atenda seus alunos com o Premium</p>
+            <p className="text-sm text-zinc-300 mt-1">Para ativar o modo personal (código de convite, lista de alunos, treinos e dietas deles) é preciso ter o Premium ativo.</p>
+            <Link to="/assinatura" className="mt-3 inline-flex items-center justify-center w-full py-3 rounded-xl bg-violet-500 text-white font-bold hover:bg-violet-400 transition">Ver o Premium</Link>
+            <p className="text-xs text-zinc-500 mt-2">Quer usar como aluno? Troque o modo no Menu.</p>
+          </div>
+        )}
       </div>
     )
   }
@@ -104,12 +115,12 @@ export default function DashboardPage() {
   const queimado = exercicios.reduce((s, e) => s + e.calorias, 0)
   const somar = !!meta?.somar_exercicio
   const resumo = resumoPeso(pesos, meta?.meta_peso_kg)
-  const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const hojeExtenso = new Date(`${hoje}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
     <div className="flex flex-col gap-4">
       <div className="animate-fade-up">
-        <p className="text-zinc-500 text-sm first-letter:uppercase">{hoje}</p>
+        <p className="text-zinc-500 text-sm first-letter:uppercase">{hojeExtenso}</p>
         <h1 className="text-2xl font-bold text-zinc-50 mt-0.5">{greeting()}, {nomeUsuario}</h1>
       </div>
 
@@ -189,7 +200,7 @@ export default function DashboardPage() {
       {user && premium && <CartaoSequencia userId={user.id} />}
       {user && premium && <CartaoJejum userId={user.id} />}
       {user && <CartaoRotina userId={user.id} />}
-      {user && <div className="animate-fade-up" style={{ animationDelay: '90ms' }}><CartaoAgua userId={user.id} data={hojeLocal()} meta={meta} onMetaMudou={recarregarMeta} /></div>}
+      {user && <div className="animate-fade-up" style={{ animationDelay: '90ms' }}><CartaoAgua userId={user.id} data={hoje} meta={meta} onMetaMudou={recarregarMeta} /></div>}
 
       {/* Refeições de hoje */}
       <section aria-label="Refeições de hoje" className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden animate-fade-up" style={{ animationDelay: '120ms' }}>
