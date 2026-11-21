@@ -1784,7 +1784,7 @@ await t('personal: ativa o modo personal, vê alunos com alertas e acompanha um 
   await page.getByText(/\/convite\/K7P2QX/).waitFor()
   assert.equal(page.gravacoes.find(g => g.tabela === 'acomp_ativar_personal').corpo.p_nome, 'Rafa Personal')
   assert.equal(page.gravacoes.find(g => g.tabela === 'acomp_ativar_personal').corpo.p_cref, '012345-G/SP')
-  await page.getByText('aguardando verificação').waitFor()
+  await page.getByText(/CREF 012345-G\/SP/).waitFor()
   // ativou: o app entra no painel do personal (faixa no topo; tocar volta ao modo normal)
   await page.getByRole('button', { name: /Painel do personal: tocar para voltar ao modo normal/ }).waitFor()
   await page.getByRole('link', { name: /Meus alunos/ }).click()

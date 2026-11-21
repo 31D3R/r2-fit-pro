@@ -15,7 +15,7 @@ BEGIN
   IF p IS NULL THEN RETURN NULL; END IF;
   t := upper(regexp_replace(p, 'cref|[[:space:].]', '', 'gi'));
   m := regexp_match(t, '^(\d{1,6})-?([GP])/?(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$');
-  IF m IS NULL THEN RETURN NULL; END IF;
+  IF m IS NULL OR m[1]::INTEGER = 0 THEN RETURN NULL; END IF;
   RETURN lpad(m[1], 6, '0') || '-' || m[2] || '/' || m[3];
 END;
 $$;

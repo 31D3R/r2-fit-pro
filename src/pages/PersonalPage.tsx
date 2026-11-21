@@ -186,7 +186,7 @@ export function ModoPersonal({ userId, nomePadrao }: { userId: string; nomePadra
           <>
             <p className="text-sm text-zinc-400">Ative o modo personal para receber um código de convite. Cada aluno escolhe o que compartilha com você. Cada aluno que assina o Premium tira 20% da sua mensalidade, e com 5 você não paga nada.</p>
             <Input label="Nome que o aluno vai ver" value={nome} onChange={e => setNome(e.target.value)} maxLength={80} />
-            <Input label="CREF" value={cref} onChange={e => setCref(e.target.value)} maxLength={30} placeholder="000000-G/UF" hint="Obrigatório. Conferimos no CONFEF antes de mostrar como verificado." />
+            <Input label="CREF" value={cref} onChange={e => setCref(e.target.value)} maxLength={30} placeholder="000000-G/UF" hint="Obrigatório. Formato: número, G ou P e o estado (ex.: 012345-G/SP)." />
             <Button loading={ocupado} onClick={() => ativar()}>Ativar modo personal</Button>
           </>
         )
@@ -199,7 +199,7 @@ export function ModoPersonal({ userId, nomePadrao }: { userId: string; nomePadra
               <Button loading={ocupado} onClick={() => ativar()}>Salvar CREF</Button>
             </div>
           ) : (
-            <p className="text-xs text-zinc-400">CREF {perfil.cref} · {perfil.cref_verificado ? <span className="text-green-400">✓ verificado</span> : <span className="text-amber-300">aguardando verificação</span>}</p>
+            <p className="text-xs text-zinc-400">CREF {perfil.cref} <span className="text-green-400">✓</span></p>
           )}
           <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-4 text-center">
             <p className="text-xs text-zinc-500">Seu código de convite</p>

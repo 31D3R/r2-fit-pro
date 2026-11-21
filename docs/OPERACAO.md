@@ -256,9 +256,9 @@ observação; marca "feito" e a próxima vira hoje + intervalo (`src/lib/rotinaB
   (fica no aparelho e em `preferencias.modo_app`). No modo personal: faixa roxa "Painel do personal" (tocar volta ao modo normal),
   selo "Personal" no topo, primeira aba "Alunos" e o Início vira o painel (alunos + convite + CREF). Troca também pelo Menu.
 - **CREF obrigatório** (migração `20261121120000_personal_cref.sql`, aplicada): `acomp_ativar_personal` exige CREF no formato
-  000000-G/UF (normaliza "CREF 12345 g sp"); mudar o CREF tira a verificação. O CONFEF não tem consulta automática: admin → aba
-  "Personais (CREF)" abre a consulta do CONFEF e marca como verificado (`admin_personais`, `admin_verificar_cref`).
-  O personal vê "aguardando verificação" ou "✓ verificado".
+  000000-G/UF (normaliza "CREF 12345 g sp"; recusa número zerado, categoria diferente de G/P e estado inexistente).
+  O CREF não tem dígito verificador como o CPF: o formato certo é a confirmação (decisão do dono). Opcional: admin → aba
+  "Personais (CREF)" abre a consulta do CONFEF e marca como conferido (`admin_personais`, `admin_verificar_cref`).
 - **Busca sem "não encontrado"**: alimento sem resultado na tabela/Open Food Facts → a IA calcula sozinha (gpt-4o-mini), aparece na lista
   e fica salvo na tabela compartilhada; exercício fora do catálogo → `exercicioPorIA` reconhece (apelido, erro de digitação) e aparece na lista.
   "Não encontrado" só quando a IA diz que não existe.

@@ -568,7 +568,7 @@ await t('treino perdido: duas sessões no mesmo dia são vagas diferentes (sem v
 await t('CREF: aceita os jeitos comuns de escrever e recusa formato errado', () => {
   assert.equal(normalizarCref('CREF 12345-G/SP'), '012345-G/SP'); assert.equal(normalizarCref('012345 g sp'), '012345-G/SP')
   assert.equal(normalizarCref('123456-P/MG'), '123456-P/MG'); assert.equal(normalizarCref('012345G/SP'), '012345-G/SP')
-  assert.equal(normalizarCref('12345-X/SP'), null); assert.equal(normalizarCref('123-G/ZZ'), null); assert.equal(normalizarCref(''), null)
+  assert.equal(normalizarCref('12345-X/SP'), null); assert.equal(normalizarCref('000000-G/SP'), null); assert.equal(normalizarCref('123-G/ZZ'), null); assert.equal(normalizarCref(''), null)
 })
 await t('sem internet: filtros, fila por cima das leituras guardadas e resposta como a do servidor', () => {
   assert.ok(combina({ user_id: 'u', data: '2026-11-20' }, '/rest/v1/food_logs?select=*&user_id=eq.u&data=eq.2026-11-20'))
