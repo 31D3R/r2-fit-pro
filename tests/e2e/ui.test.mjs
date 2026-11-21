@@ -90,21 +90,22 @@ let ok = 0
 const erros = []
 const t = async (nome, f) => { try { await f(); ok++; console.log('✓', nome) } catch (e) { erros.push(nome); console.log('✗', nome, '\n   ', e.message.split('\n')[0]) } }
 
-async function contexto(browser, { logado = false, estado = 'sem_assinatura', admin = false, acessoFalha = false, pagamentos = false, checkoutFalha = false, asaas = false, nutricao = false, treino = false, personal = false, amigos = false, renovacao = false, rotinaInicial = null, userAgent, instalado = Boolean(userAgent), viewport = { width: 390, height: 844 }, comServiceWorker = false } = {}) {
+async function contexto(browser, { logado = false, estado = 'sem_assinatura', admin = false, acessoFalha = false, pagamentos = false, checkoutFalha = false, asaas = false, nutricao = false, treino = false, personal = false, amigos = false, renovacao = false, rotinaInicial = null, userAgent, instalado = Boolean(userAgent), viewport = { width: 390, height: 844 }, comServiceWorker = false, tokenVencido = false } = {}) {
   const chamadasBilling = []
   const gravacoes = []
   let sessaoE2e = null
   let preferenciasE2e = rotinaInicial ? { rotina: rotinaInicial } : {}
   // service worker bloqueado nos testes: as respostas simuladas vêm sempre das rotas abaixo
   const ctx = await browser.newContext({ viewport, serviceWorkers: comServiceWorker ? 'allow' : 'block', ...(userAgent ? { userAgent } : {}) })
-  await ctx.addInitScript(([s, logado, instalado]) => {
+  await ctx.addInitScript(([s, logado, instalado, vencido]) => {
     sessionStorage.setItem('r2fit:welcome-visto', '1')
-    if (logado) localStorage.setItem('sb-mock-auth-token', JSON.stringify(s))
+    // token vencido (app aberto depois de horas): o login renova o token no servidor
+    if (logado && !localStorage.getItem('sb-mock-auth-token')) localStorage.setItem('sb-mock-auth-token', JSON.stringify(vencido ? { ...s, expires_at: Math.floor(Date.now() / 1000) - 60 } : s))
     // Simula o app aberto pela tela inicial (no celular o app exige estar instalado)
     if (instalado) Object.defineProperty(navigator, 'standalone', { get: () => true })
     // Android exige o app (APK); nos testes de celular "instalado", libera como se fosse o app
     if (instalado) sessionStorage.setItem('r2-continuar-navegador', '1')
-  }, [sessao, logado, instalado])
+  }, [sessao, logado, instalado, tokenVencido])
   const premium = ['ativa', 'tolerancia', 'cancelada_vigente', 'admin', 'teste'].includes(estado)
   const testeAte = estado === 'teste' ? new Date(Date.now() + 5 * 86400000 - 3600000).toISOString() : null
   await ctx.route('https://mock.supabase.co/**', async rota => {
@@ -880,6 +881,41 @@ await t('app Android desatualizado: aviso de versão nova com download pelo nave
   }
 })
 
+await t('app Android 1.9.2+: atualizar com um toque baixa dentro do app (permissão na primeira vez, progresso)', async () => {
+  const wv = 'Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/130.0 Mobile Safari/537.36'
+  const versao = await (await fetch(BASE + '/baixar/versao.json')).json()
+  const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', userAgent: wv, instalado: false })
+  await page.addInitScript(b => {
+    const app = { getInfo: async () => ({ build: b, version: '1.0' }) }
+    let ouvinte = null
+    window.__chamadas = []
+    const atualizar = {
+      addListener: async (ev, cb) => { ouvinte = cb; return { remove: async () => { ouvinte = null } } },
+      instalar: async o => {
+        window.__chamadas.push(o.url)
+        // primeira vez: o Android pede para permitir instalar do app
+        if (window.__chamadas.length === 1) return { estado: 'permissao' }
+        for (const pct of [0, 50, 100]) { ouvinte?.({ pct }); await new Promise(r => setTimeout(r, 150)) }
+        return { estado: 'instalando' }
+      },
+    }
+    const plugins = { App: app, AtualizarApp: atualizar }
+    window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: n => n in plugins, registerPlugin: n => plugins[n], Plugins: plugins }
+  }, String(versao.versionCode - 1))
+  await page.goto(BASE + '/dashboard')
+  const aviso = page.getByRole('status', { name: 'Nova versão do app' })
+  await aviso.waitFor()
+  await aviso.getByRole('button', { name: 'Atualizar agora' }).click()
+  await aviso.getByText(/Permitir desta fonte/).waitFor()
+  await aviso.getByRole('button', { name: 'Já permiti, atualizar' }).click()
+  await aviso.getByText(/Baixando…/).waitFor()
+  await aviso.getByText(/Toque em "Atualizar" na tela do Android/).waitFor()
+  assert.deepEqual(await page.evaluate(() => window.__chamadas), [1, 2].map(() => `https://r2-fit-pro.vercel.app/baixar/${versao.arquivo}`))
+  await page.screenshot({ path: `${SHOTS}/app-atualizar-um-toque.png` })
+  assert.deepEqual(page.consoleErros, [])
+  await ctx.close()
+})
+
 await t('treino perdido: pergunta os dias na primeira vez e edita na tela do treino', async () => {
   const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', nutricao: true, treino: 'dois' })
   await page.goto(BASE + '/dashboard')
@@ -971,6 +1007,50 @@ await t('sem internet: o que foi registrado fica no celular, aparece na tela e s
   for (let i = 0; i < 30 && (await page.evaluate(() => JSON.parse(localStorage.getItem('r2-off-fila') || '[]').length)); i++) await page.waitForTimeout(100)
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('r2-off-fila') || '[]').length), 0, 'fila vazia depois de sincronizar')
   assert.deepEqual(page.consoleErros.filter(e => !/Failed to fetch|ERR_INTERNET_DISCONNECTED|net::/.test(e)), [])
+  await ctx.close()
+})
+
+await t('sem internet: app aberto do zero sem sinal (token vencido) abre as telas, mostra o que estava salvo e guarda o que for feito', async () => {
+  const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', nutricao: true, comServiceWorker: true })
+  await page.goto(BASE + '/dashboard')
+  await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 15000 })
+  await page.goto(BASE + '/calorias')
+  await page.getByText('Pão francês').first().waitFor()
+  await page.goto(BASE + '/dieta/d1')
+  await page.getByRole('button', { name: 'Marcar Almoço como feito' }).waitFor()
+  // horas depois, sem sinal: o token venceu e o app é aberto do zero
+  await page.evaluate(() => { const k = 'sb-mock-auth-token'; const s = JSON.parse(localStorage.getItem(k)); s.expires_at = Math.floor(Date.now() / 1000) - 60; localStorage.setItem(k, JSON.stringify(s)) })
+  await ctx.setOffline(true)
+  await page.goto(BASE + '/dashboard')
+  await page.getByRole('status').filter({ hasText: /Sem internet/ }).waitFor({ timeout: 15000 })
+  assert.ok(!page.url().includes('/login') && !page.url().includes('/auth'), `não mandou para o login (${page.url()})`)
+  // telas abertas antes mostram o que estava salvo
+  await page.getByRole('link', { name: 'Diário' }).first().click()
+  await page.getByText('Pão francês').first().waitFor()
+  await page.goto(BASE + '/dieta/d1')
+  await page.getByRole('button', { name: 'Marcar Almoço como feito' }).click()
+  await page.getByText('✓ Feito · lançado no diário de hoje').waitFor()
+  // fechou e abriu de novo, ainda sem sinal: continua marcado (a fila fica no celular)
+  await page.reload()
+  await page.getByText('✓ Feito · lançado no diário de hoje').waitFor({ timeout: 15000 })
+  assert.equal(page.gravacoes.filter(g => g.tabela === 'food_logs' && g.metodo === 'POST').length, 0)
+  // voltou o sinal: envia sozinho
+  await ctx.setOffline(false)
+  await page.evaluate(() => window.dispatchEvent(new Event('online')))
+  for (let i = 0; i < 80 && !page.gravacoes.some(g => g.tabela === 'food_logs' && g.metodo === 'POST'); i++) await page.waitForTimeout(100)
+  assert.equal(page.gravacoes.filter(g => g.tabela === 'food_logs' && g.metodo === 'POST').pop()?.corpo?.[0]?.nome, 'Frango grelhado')
+  await ctx.close()
+})
+
+await t('sem internet: treino nunca aberto já fica no celular (busca em segundo plano) e abre sem sinal', async () => {
+  const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', treino: true, comServiceWorker: true })
+  await page.goto(BASE + '/dashboard')
+  await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 15000 })
+  await page.waitForFunction(() => Object.keys(JSON.parse(localStorage.getItem('r2-off-cache') || '{}')).some(k => k.includes('treinos?select=*&id=eq.t1')), null, { timeout: 15000 })
+  await ctx.setOffline(true)
+  await page.goto(BASE + '/treino/t1/dia/0')
+  await page.getByText('Supino reto com barra').first().waitFor({ timeout: 15000 })
+  await page.getByRole('status').filter({ hasText: /Sem internet/ }).waitFor()
   await ctx.close()
 })
 

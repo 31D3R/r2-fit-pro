@@ -153,3 +153,15 @@ export async function versaoDoApp(): Promise<{ codigo: number; nome: string } | 
   const info = await app.getInfo()
   return { codigo: Number(info.build) || 0, nome: info.version }
 }
+
+// --- Atualização com um toque (app 1.9.2+) ---
+export interface AtualizarAppNativo {
+  instalar(o: { url: string }): Promise<{ estado: 'instalando' | 'permissao' }>
+  addListener(ev: 'progresso', cb: (e: { pct: number }) => void): Promise<{ remove: () => Promise<void> }>
+}
+/** null no navegador e em app antigo (que atualiza baixando pelo navegador). */
+export function atualizarAppNativo(): AtualizarAppNativo | null {
+  const c = cap()
+  if (!c?.isNativePlatform?.() || !c.isPluginAvailable?.('AtualizarApp')) return null
+  return (c.registerPlugin?.<AtualizarAppNativo>('AtualizarApp') ?? (c.Plugins?.AtualizarApp as AtualizarAppNativo | undefined)) ?? null
+}

@@ -270,6 +270,12 @@ observação; marca "feito" e a próxima vira hoje + intervalo (`src/lib/rotinaB
   `parar({ liberarTela: true })` na abertura limpa um contador órfão; toque em lembrete com o contador tocando não troca de tela;
   permissão de notificação pedida uma vez por abertura; tela "Sem conexão" do app com botão "Tentar de novo" (`errorPath`).
 
+- **App Android 1.9.2 (código 13)**: atualização com um toque (plugin `AtualizarApp`): baixa o APK de `/baixar/` dentro do app
+  (progresso) e abre o instalador do Android; na primeira vez abre o ajuste "instalar apps desconhecidos" para o R2 Fit Pro.
+  Apps até 1.9.1 continuam atualizando pelo navegador. Permissão `REQUEST_INSTALL_PACKAGES`.
+- **Sem internet, pré-carregamento** (`src/lib/preCarregar.ts`): com internet, a cada 20 min, busca em segundo plano treinos
+  (4 mais recentes), dietas (3), meta e opções, e as vozes do contador do treino mais recente (o service worker guarda).
+
 ### Revisão iPhone/Android (21/11/2026)
 - Botão voltar do Android: registrado uma vez só (antes empilhava a cada troca de tela e o efeito parava o contador nativo).
 - Navegador: com o contador aberto, voltar/deslizar da borda (iPhone) abre "Encerrar o treino?" (entrada extra no histórico).

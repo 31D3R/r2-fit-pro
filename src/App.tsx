@@ -146,6 +146,15 @@ function SincronizarApp() {
     const c = contadorNativo()
     if (c && typeof c.parar === 'function') Promise.resolve().then(() => c.parar({ liberarTela: true })).catch(() => {})
   }, [])
+  // Treinos, dietas e opções guardados no aparelho (para abrir sem internet)
+  useEffect(() => {
+    if (!user) return
+    const ir = () => { import('./lib/preCarregar').then(m => m.preCarregar(user.id)).catch(() => {}) }
+    const t = setTimeout(ir, 4000)
+    const vis = () => { if (document.visibilityState === 'visible') ir() }
+    document.addEventListener('visibilitychange', vis)
+    return () => { clearTimeout(t); document.removeEventListener('visibilitychange', vis) }
+  }, [user])
   useEffect(() => {
     if (user && ehAppNativo()) import('./lib/lembretes').then(m => m.sincronizarLembretesApp(user.id)).catch(() => {})
     // Rotina de ergogênicos (pode ter mudado em outro aparelho)

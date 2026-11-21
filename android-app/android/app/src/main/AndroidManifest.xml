@@ -64,4 +64,6 @@
     <!-- Leitor de código de barras e foto do rótulo -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Atualização com um toque: abre o instalador do Android com o APK novo baixado pelo app -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

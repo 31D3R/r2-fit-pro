@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Download, X } from 'lucide-react'
-import { ehAppNativo, versaoDoApp } from '../lib/nativo'
+import { atualizarAppNativo, ehAppNativo, versaoDoApp } from '../lib/nativo'
 import { Card } from './UI'
 
 // "Agora não" vale até fechar o app; na próxima abertura o aviso volta
@@ -35,6 +35,39 @@ export async function verificarVersaoApp(): Promise<InfoVersao> {
   return { instalada, publicada, problema }
 }
 
+/**
+ * Botão de atualizar: no app 1.9.2+ baixa dentro do app e abre a tela do Android "Atualizar?" (um toque);
+ * em app antigo, abre o link no navegador (baixar e instalar o arquivo).
+ */
+function BotaoAtualizar({ link, rotulo, className }: { link: string; rotulo: string; className: string }) {
+  const [estado, setEstado] = useState<'' | 'baixando' | 'permissao' | 'instalando' | 'erro'>('')
+  const [pct, setPct] = useState(-1)
+  const [erro, setErro] = useState('')
+  const plugin = atualizarAppNativo()
+  if (!plugin) return <a href={link} className={className}>{rotulo}</a>
+  const atualizar = async () => {
+    if (estado === 'baixando') return
+    setEstado('baixando'); setPct(-1); setErro('')
+    const ouvinte = await plugin.addListener('progresso', e => setPct(e.pct)).catch(() => null)
+    try {
+      const r = await plugin.instalar({ url: link })
+      setEstado(r.estado)
+    } catch (e) {
+      setEstado('erro'); setErro(e instanceof Error ? e.message : 'Não foi possível baixar a atualização.')
+    } finally { ouvinte?.remove().catch(() => {}) }
+  }
+  return (
+    <div>
+      <button type="button" onClick={atualizar} disabled={estado === 'baixando'} className={`${className} disabled:opacity-70`}>
+        {estado === 'baixando' ? `Baixando…${pct >= 0 ? ` ${pct}%` : ''}` : estado === 'permissao' ? 'Já permiti, atualizar' : rotulo}
+      </button>
+      {estado === 'permissao' && <p className="text-[11px] text-amber-300 mt-1.5">Na tela que abriu, ligue "Permitir desta fonte" para o R2 Fit Pro, volte aqui e toque de novo. É só na primeira vez.</p>}
+      {estado === 'instalando' && <p className="text-[11px] text-green-400 mt-1.5">Toque em "Atualizar" na tela do Android. Seus dados continuam.</p>}
+      {estado === 'erro' && <p className="text-[11px] text-red-400 mt-1.5">{erro}</p>}
+    </div>
+  )
+}
+
 /** App Android: avisa quando há versão nova do app (a parte nativa só muda instalando o APK novo). */
 export default function AvisoAtualizacaoApp() {
   const [nova, setNova] = useState<InfoVersao['publicada']>(null)
@@ -59,8 +92,8 @@ export default function AvisoAtualizacaoApp() {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-zinc-100">Nova versão do R2 Fit Pro{nova.nome ? ` (${nova.nome})` : ''}</p>
         {nova.novidades && <p className="text-xs text-zinc-400 mt-0.5">{nova.novidades}</p>}
-        <a href={nova.link} className="inline-flex mt-2 px-3 py-1.5 rounded-lg bg-green-500 text-zinc-950 text-xs font-bold">Atualizar agora</a>
-        <p className="text-[11px] text-zinc-500 mt-1.5">Baixa pelo navegador; abra o arquivo baixado e toque em Instalar. Seus dados continuam.</p>
+        <BotaoAtualizar link={nova.link} rotulo="Atualizar agora" className="inline-flex mt-2 px-3 py-1.5 rounded-lg bg-green-500 text-zinc-950 text-xs font-bold" />
+        {!atualizarAppNativo() && <p className="text-[11px] text-zinc-500 mt-1.5">Baixa pelo navegador; abra o arquivo baixado e toque em Instalar. Seus dados continuam.</p>}
       </div>
       <button onClick={dispensar} aria-label="Agora não" className="p-1 -m-1 text-zinc-500 hover:text-zinc-300"><X className="w-4 h-4" /></button>
     </div>
@@ -85,7 +118,7 @@ export function CartaoVersaoApp() {
           {info.instalada && info.publicada && !desatualizado && <p className="text-xs text-green-400 mt-1">✓ Você está na versão mais nova.</p>}
           {info.problema && <p className="text-xs text-zinc-500 mt-1">Detalhe: {info.problema}</p>}
           {(desatualizado || !info.instalada) && info.publicada && (
-            <a href={info.publicada.link} className="inline-flex mt-3 px-4 py-2 rounded-xl bg-green-500 text-zinc-950 text-sm font-bold">Baixar a versão {info.publicada.nome}</a>
+            <BotaoAtualizar link={info.publicada.link} rotulo={atualizarAppNativo() ? `Atualizar para a versão ${info.publicada.nome}` : `Baixar a versão ${info.publicada.nome}`} className="inline-flex mt-3 px-4 py-2 rounded-xl bg-green-500 text-zinc-950 text-sm font-bold" />
           )}
         </>
       )}
