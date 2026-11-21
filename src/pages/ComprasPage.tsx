@@ -14,13 +14,14 @@ const lerMarcados = (id: string) => { try { return new Set<string>(JSON.parse(lo
 export default function ComprasPage() {
   const { id = '' } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [dieta, setDieta] = useState<Dieta | null>(null)
+  const [dieta, setDieta] = useState<Dieta | null | undefined>(undefined)
   const [dias, setDias] = useState(7)
   const [marcados, setMarcados] = useState<Set<string>>(() => lerMarcados(id))
   const [aviso, setAviso] = useState('')
   useEffect(() => { supabase.from('dietas').select('*').eq('id', id).maybeSingle().then(({ data }) => setDieta(data as Dieta | null)) }, [id])
   const itens = useMemo(() => (dieta ? listaDeCompras(dieta.plano?.refeicoes ?? [], dias) : []), [dieta, dias])
-  if (!dieta) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+  if (dieta === undefined) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+  if (!dieta) return <p className="text-center py-16 text-zinc-500">Dieta não encontrada.</p>
 
   const marcar = (k: string) => setMarcados(m => {
     const n = new Set(m); if (n.has(k)) n.delete(k); else n.add(k)

@@ -86,6 +86,9 @@ export default function PlanoWizardPage() {
     origem: modo,
     divisao: LETRAS.slice(0, n).join(''),
     agenda,
+    // ajustes de treino perdido da semana (encaixe e divisão) continuam ao editar o plano
+    ...(editando && treino?.plano.encaixes ? { encaixes: treino.plano.encaixes } : {}),
+    ...(editando && treino?.plano.extras ? { extras: treino.plano.extras } : {}),
     config: cfg,
     dias: aplicarDivisao(editando && treino ? treino.plano.dias : [], treinos, cfg.duracao),
     observacoes: editando && treino ? treino.plano.observacoes : [],

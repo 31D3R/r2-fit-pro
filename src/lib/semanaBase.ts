@@ -154,6 +154,9 @@ export function parteDoExercicio(e: ExercicioPlano): string {
 export const LIMITE_EXTRA = 8
 const seriesDe = (exs: ExercicioPlano[]) => exs.reduce((t, e) => t + Math.max(1, e.series), 0)
 
+/** Sessão da agenda: data e letra (duas sessões no mesmo dia são vagas diferentes). */
+export const chaveSlot = (s: { data: string; letra: string }) => `${s.data}|${s.letra}`
+
 export interface Destino { data: string; letra: string; diaIdx: number; exercicios: ExercicioPlano[]; series: number }
 export interface Divisao {
   semanas: 1 | 2; destinos: Destino[]; alertas: string[]; plano: PlanoTreino; ate: string
@@ -187,7 +190,7 @@ export function planejarDivisao(p: PlanoTreino, perdido: Agendado, hoje: string,
   const exs = p.dias[perdido.diaIdx]?.exercicios.filter(e => !e.temporarioAte) ?? []
   if (!slots.length || !exs.length) return null
   const mapa = mapaDaSemana(p, hoje, perdido.data)
-  const carga = new Map<string, ExercicioPlano[]>(slots.map(s => [s.data, []]))
+  const carga = new Map<string, ExercicioPlano[]>(slots.map(s => [chaveSlot(s), []]))
 
   // 1. partes, na ordem do treino
   const partes: ExercicioPlano[][] = []
@@ -201,7 +204,7 @@ export function planejarDivisao(p: PlanoTreino, perdido: Agendado, hoje: string,
   const custo = (s: Agendado, bloco: ExercicioPlano[]) => {
     const fams = new Set(bloco.map(familiaDoExercicio).filter((x): x is string => !!x))
     const base = familiasDoDia(p.dias[s.diaIdx])
-    const atual = seriesDe(carga.get(s.data)!)
+    const atual = seriesDe(carga.get(chaveSlot(s))!)
     const depois = atual + seriesDe(bloco)
     const colado = [...fams].some(f => vizinhoCom(mapa, s.data, f))
     const mesmo = [...fams].some(f => base.has(f))
@@ -212,7 +215,7 @@ export function planejarDivisao(p: PlanoTreino, perdido: Agendado, hoje: string,
     const opcoes = slots.map(s => ({ s, c: custo(s, bloco) })).sort((a, b) => a.c.valor - b.c.valor)
     const melhor = opcoes[0]
     if (bloco.length > 1 && (melhor.c.colado || melhor.c.passa > 0)) { fila.push(...bloco.map(e => [e])); ordenar(); continue }
-    carga.get(melhor.s.data)!.push(...bloco)
+    carga.get(chaveSlot(melhor.s))!.push(...bloco)
     bloco.forEach(e => { const f = familiaDoExercicio(e); if (f) mapa.set(melhor.s.data, new Set([...(mapa.get(melhor.s.data) ?? []), f])) })
   }
 
@@ -222,8 +225,8 @@ export function planejarDivisao(p: PlanoTreino, perdido: Agendado, hoje: string,
 /** Monta a divisão a partir de quais exercícios vão em cada sessão (das regras ou da IA): avisos, janelas e o plano novo. */
 function montarDivisao(p: PlanoTreino, perdido: Agendado, hoje: string, semanas: 1 | 2, slots: Agendado[], carga: Map<string, ExercicioPlano[]>,
   fonte: 'ia' | 'regras', explicacao?: string): Divisao {
-  const destinos: Destino[] = slots.filter(s => carga.get(s.data)?.length)
-    .map(s => ({ ...s, exercicios: carga.get(s.data)!, series: seriesDe(carga.get(s.data)!) }))
+  const destinos: Destino[] = slots.filter(s => carga.get(chaveSlot(s))?.length)
+    .map(s => ({ ...s, exercicios: carga.get(chaveSlot(s))!, series: seriesDe(carga.get(chaveSlot(s))!) }))
   // avisos: dia que passou do limite e músculo colado num treino do mesmo grupamento (contando o que foi dividido)
   const mapa = mapaDaSemana(p, hoje, perdido.data)
   destinos.forEach(d => d.exercicios.forEach(e => { const f = familiaDoExercicio(e); if (f) mapa.set(d.data, new Set([...(mapa.get(d.data) ?? []), f])) }))
@@ -253,7 +256,7 @@ function montarDivisao(p: PlanoTreino, perdido: Agendado, hoje: string, semanas:
 export const exerciciosDoPerdido = (p: PlanoTreino, perdido: Agendado) => p.dias[perdido.diaIdx]?.exercicios.filter(e => !e.temporarioAte) ?? []
 
 /**
- * Divisão a partir de uma resposta da IA: { data da sessão: [ids dos exercícios] }. Só vale se cada exercício do treino
+ * Divisão a partir de uma resposta da IA: { chaveSlot da sessão (data|letra): [ids dos exercícios] }. Só vale se cada exercício do treino
  * perdido aparece exatamente uma vez e só em sessões que podem receber; senão null (o app usa as regras).
  */
 export function divisaoPorAtribuicao(p: PlanoTreino, perdido: Agendado, hoje: string, hojeFeito: boolean, semanas: 1 | 2,
@@ -261,7 +264,7 @@ export function divisaoPorAtribuicao(p: PlanoTreino, perdido: Agendado, hoje: st
   const slots = vagas(p, perdido, hoje, hojeFeito, semanas)
   const exs = exerciciosDoPerdido(p, perdido)
   if (!slots.length || !exs.length) return null
-  const carga = new Map<string, ExercicioPlano[]>(slots.map(s => [s.data, []]))
+  const carga = new Map<string, ExercicioPlano[]>(slots.map(s => [chaveSlot(s), []]))
   const usados = new Set<string>()
   for (const [data, ids] of Object.entries(porData)) {
     if (!carga.has(data) || !Array.isArray(ids)) return null

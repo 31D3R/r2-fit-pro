@@ -10,7 +10,8 @@ export async function carregarPrefsApp(userId: string): Promise<Record<string, u
 
 /** Grava uma chave sem apagar as outras. */
 export async function salvarPrefApp(userId: string, chave: string, valor: unknown): Promise<void> {
-  const atual = await carregarPrefsApp(userId).catch(() => ({}))
+  // Se não deu para ler as outras preferências, não grava (gravar por cima apagaria a rotina, o jejum...)
+  const atual = await carregarPrefsApp(userId).catch(() => { throw new Error('Não foi possível salvar. Confira a internet e tente de novo.') })
   const { error } = await supabase.from('user_settings')
     .upsert({ user_id: userId, preferencias: { ...atual, [chave]: valor }, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
   if (error) throw new Error('Não foi possível salvar. Confira a internet e tente de novo.')

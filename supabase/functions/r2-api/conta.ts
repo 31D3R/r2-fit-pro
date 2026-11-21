@@ -30,6 +30,8 @@ export async function excluirUsuario(admin: SupabaseClient, alvo: { id: string; 
   // Remove arquivos pessoais
   const { data: arquivos } = await admin.storage.from('avatars').list(alvo.id, { limit: 100 })
   if (arquivos?.length) await admin.storage.from('avatars').remove(arquivos.map(a => `${alvo.id}/${a.name}`))
+  const { data: fotos } = await admin.storage.from('evolucao').list(alvo.id, { limit: 1000 })
+  if (fotos?.length) await admin.storage.from('evolucao').remove(fotos.map(a => `${alvo.id}/${a.name}`))
 
   const { error } = await admin.auth.admin.deleteUser(alvo.id)
   if (error) throw error

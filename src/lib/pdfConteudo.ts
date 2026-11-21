@@ -34,7 +34,7 @@ export function pdfDieta(nome: string, p: PlanoAlimentar): Blob {
   d.texto(`Objetivo: ${p.objetivo} · gerado em ${hojeBR()}`, { cor: [0.4, 0.4, 0.45], espacoAntes: 2 })
   for (const r of p.refeicoes ?? []) {
     d.titulo2(`${r.nome}${r.horario ? ` · ${r.horario}` : ''} — ${r.calorias} kcal`)
-    for (const a of r.alimentos ?? []) d.texto(`• ${a.nome}${a.quantidade ? ` — ${a.quantidade}` : ''} (${a.calorias} kcal)`, { recuo: 4 })
+    for (const a of r.alimentos ?? []) d.texto(`• ${a.nome}${a.quantidade ? ` — ${a.quantidade}` : ''}${Number.isFinite(Number(a.calorias)) ? ` (${Math.round(Number(a.calorias))} kcal)` : ''}`, { recuo: 4 })
   }
   if (p.dicas?.length) { d.titulo2('Dicas'); p.dicas.forEach(t => d.texto(`• ${t}`, { recuo: 4 })) }
   return d.blob()

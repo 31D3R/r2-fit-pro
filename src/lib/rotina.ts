@@ -12,7 +12,9 @@ export async function carregarRotina(userId: string): Promise<Rotina> {
 
 export async function salvarRotina(userId: string, rotina: Rotina): Promise<void> {
   // Lê as outras preferências para não apagar nada além da rotina
-  const { data } = await supabase.from('user_settings').select('preferencias').eq('user_id', userId).maybeSingle()
+  const { data, error: erroLer } = await supabase.from('user_settings').select('preferencias').eq('user_id', userId).maybeSingle()
+  // Sem ler as outras preferências não grava: gravar por cima apagaria o jejum e a revisão da meta
+  if (erroLer) throw new Error('Não foi possível salvar. Confira a internet e tente de novo.')
   const preferencias = { ...(data?.preferencias ?? {}), rotina }
   const { error } = await supabase.from('user_settings')
     .upsert({ user_id: userId, preferencias, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })

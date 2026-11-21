@@ -438,6 +438,9 @@ export class TreinoPlayer {
   // modo audio
   private audio: HTMLAudioElement | null = null
   private url: string | null = null
+  /** Faixa recarregando (tempo mudado no meio do treino): posição a aplicar quando carregar e se a pessoa pausou nesse meio-tempo */
+  private posPendente: number | null = null
+  private pausaNaRecarga = false
   // modo mix
   private clips: Clipes | null = null
   private ctx: Ctx | null = null
@@ -539,10 +542,13 @@ export class TreinoPlayer {
     const pos = Math.min(Math.max(destino, t), this.crono.total)
     if (pos <= t + 0.01) return
     if (this.modo === 'mix' && this.ctx) {
+      // interrompido pelo sistema (contexto suspenso sem a pessoa pedir): volta a tocar antes de pular
+      if (this.interrompido && !this.pausadoMix) this.ctx.resume().catch(() => {})
       // agendarDe começa 0,05 s depois de agora: compensa para o relógio já ficar no ponto (pausado, ele não anda)
       this.agendarDe(pos + 0.05) // pausado (contexto suspenso), as falas esperam o retomar no horário certo
     } else if (this.audio) {
-      try { this.audio.currentTime = pos } catch { /* ainda carregando */ }
+      if (this.posPendente != null) this.posPendente = pos // faixa recarregando: aplica quando carregar
+      else try { this.audio.currentTime = pos } catch { /* ainda carregando */ }
       this.baseParede = Date.now() - pos * 1000
       this.interrompido = false
     } else {
@@ -593,7 +599,16 @@ export class TreinoPlayer {
       this.url = URL.createObjectURL(renderizarFaixa(this.crono, this.clips, TAXA))
       this.pausaPedida = tocando
       a.src = this.url
-      const seguir = () => { try { a.currentTime = t } catch { /* ainda carregando */ } if (tocando) a.play().catch(() => { this.interrompido = true }) }
+      this.posPendente = t
+      this.pausaNaRecarga = false
+      const seguir = () => {
+        const pos = this.posPendente ?? t
+        this.posPendente = null
+        try { a.currentTime = pos } catch { /* ainda carregando */ }
+        this.baseParede = Date.now() - pos * 1000
+        if (tocando && !this.pausaNaRecarga && !this.parado) a.play().catch(() => { this.interrompido = true })
+        this.pausaNaRecarga = false
+      }
       a.addEventListener('loadedmetadata', seguir, { once: true })
       a.load()
       if (velha) URL.revokeObjectURL(velha)
@@ -622,7 +637,10 @@ export class TreinoPlayer {
       const d = this.clips![k]
       clipes[k] = { wav: await blobParaBase64(wavDoClipe(d)), dur: d.length / TAXA }
     }
+    if (this.parado) return
     await n.preparar({ clipes })
+    // a pessoa saiu (ou tocou de novo) enquanto as vozes preparavam: não começa a falar sem tela para parar
+    if (this.parado) return
     this.t0 = Date.now()
     this.baseParede = this.t0
     await this.tocarNativo(0)
@@ -669,6 +687,7 @@ export class TreinoPlayer {
     if (this.abaixarMusica) this.prepararAbaixar(ctx)
     this.ligarManterVivo(ctx)
     await ctx.resume()
+    if (this.parado) return
     this.agendarDe(0)
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') this.segundoPlano(true)
   }
@@ -806,6 +825,7 @@ export class TreinoPlayer {
       return Math.min(this.crono.total, Math.max(0, this.ctx.currentTime - this.t0Ctx))
     }
     if (this.audio) {
+      if (this.posPendente != null) return this.posPendente
       if (this.audio.ended) return this.crono.total
       // Enquanto o sistema segura o áudio, a tela mostra o tempo real do treino
       return this.interrompido ? Math.min(this.crono.total, this.posicaoEsperada()) : this.audio.currentTime
@@ -835,7 +855,7 @@ export class TreinoPlayer {
       this.ctx.suspend().finally(() => { this.pausaPedida = false })
       return
     }
-    if (this.audio) { this.pausaPedida = !this.audio.paused; this.interrompido = false; this.audio.pause(); return }
+    if (this.audio) { if (this.posPendente != null) this.pausaNaRecarga = true; this.pausaPedida = !this.audio.paused; this.interrompido = false; this.audio.pause(); return }
     if (this.pausadoEm === null) { this.pausadoEm = Date.now(); window.speechSynthesis?.pause() }
   }
 

@@ -6,7 +6,7 @@ import {
 } from './treinoModel'
 import { chatCompletion } from './aiClient'
 import {
-  LIMITE_EXTRA, agendaDasSemanas, dataComDia, divisaoPorAtribuicao, exerciciosDoPerdido, fimSemana, parteDoExercicio,
+  LIMITE_EXTRA, agendaDasSemanas, chaveSlot, dataComDia, divisaoPorAtribuicao, exerciciosDoPerdido, fimSemana, parteDoExercicio,
   planejarDivisao, somar, vagas, type Agendado, type Divisao,
 } from './semanaBase'
 
@@ -238,7 +238,7 @@ export async function planejarDivisaoComIA(p: PlanoTreino, perdido: Agendado, ho
   try {
     const slots = vagas(p, perdido, hoje, hojeFeito, semanas)
     const exs = exerciciosDoPerdido(p, perdido)
-    const sid = new Map(slots.map((s, i) => [s.data, `S${i + 1}`]))
+    const sid = new Map(slots.map((s, i) => [chaveSlot(s), `S${i + 1}`]))
     const eid = new Map(exs.map((e, i) => [e.id, `E${i + 1}`]))
     const descr = (e: ExercicioPlano) => `${e.nome} (${parteDoExercicio(e)}; ${e.series}x${e.repeticoes || '-'})`
     const fim = semanas === 2 ? somar(fimSemana(hoje), 7) : fimSemana(hoje)
@@ -250,12 +250,13 @@ export async function planejarDivisaoComIA(p: PlanoTreino, perdido: Agendado, ho
         ...(p.encaixes ?? []).filter(e => e.data === d).map(e => p.dias.find(x => x.letra === e.letra)),
       ].filter((x): x is DiaTreino => !!x)
       const marca = d === hoje ? ' (hoje)' : ''
-      const quem = sid.get(d) ? ` [${sid.get(d)}]` : ''
+      // cada sessão do dia com a sua marca [S1], [S2]... (dois treinos no mesmo dia são vagas diferentes)
+      const quem = (letra: string) => { const k = sid.get(chaveSlot({ data: d, letra })); return k ? ` [${k}]` : '' }
       linhas.push(d === perdido.data ? `${dataComDia(d)}${marca}: treino perdido (não treinou)`
-        : doDia.length ? `${dataComDia(d)}${marca}${quem}: ${doDia.map(x => `Treino ${x.letra} — ${x.exercicios.filter(e => !e.temporarioAte).map(descr).join('; ') || x.foco}`).join(' + ')}`
+        : doDia.length ? `${dataComDia(d)}${marca}: ${doDia.map(x => `Treino ${x.letra}${quem(x.letra)} — ${x.exercicios.filter(e => !e.temporarioAte).map(descr).join('; ') || x.foco}`).join(' + ')}`
         : `${dataComDia(d)}${marca}: descanso`)
     }
-    const propostaRegras = regras.destinos.map(d => `${sid.get(d.data)}: ${d.exercicios.map(e => eid.get(e.id)).join(', ')}`).join(' | ')
+    const propostaRegras = regras.destinos.map(d => `${sid.get(chaveSlot(d))}: ${d.exercicios.map(e => eid.get(e.id)).join(', ')}`).join(' | ')
 
     const prompt = `Você é um personal trainer. O aluno perdeu um treino e quer distribuir esse treino nas próximas sessões, sem perder o treino e sem atrapalhar o resultado.
 

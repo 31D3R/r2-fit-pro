@@ -86,7 +86,7 @@ export default function CartaoSemanaTreino({ userId }: { userId: string }) {
             {perdidos.length > 1 && ` Mais ${perdidos.length - 1} ${perdidos.length === 2 ? 'treino ficou' : 'treinos ficaram'} para trás; os de grupos maiores vêm primeiro.`}
           </p>
           <div className="flex flex-col gap-2 mt-3">
-            <button type="button" disabled={ocupado} onClick={() => aplicar(async () => {
+            <button type="button" disabled={ocupado || analisando !== null} onClick={() => aplicar(async () => {
               await marcarConcluido(userId, treino, perdido)
               return { ...semana, feitos: [...feitos, perdido.diaIdx] }
             }, `Treino ${perdido.letra} marcado como concluído.`)}
@@ -122,7 +122,7 @@ export default function CartaoSemanaTreino({ userId }: { userId: string }) {
                   : <p className="text-xs text-zinc-400">O treino {perdido.letra} separado por músculo, sem pesar nenhum dia e sem o mesmo grupo em dias seguidos:</p>}
                 <ul className="flex flex-col gap-1.5">
                   {previa.destinos.map(d => (
-                    <li key={d.data} className="text-sm">
+                    <li key={`${d.data}-${d.letra}`} className="text-sm">
                       <span className="font-semibold text-zinc-100">{dataComDia(d.data)} · Treino {d.letra}</span>
                       <span className="text-zinc-500"> (+{d.series} séries)</span>
                       <span className="block text-xs text-zinc-400">{d.exercicios.map(e => `${e.nome} ${e.series}×`).join(' · ')}</span>
@@ -138,7 +138,7 @@ export default function CartaoSemanaTreino({ userId }: { userId: string }) {
                 </div>
               </div>
             )}
-            <button type="button" disabled={ocupado || !livres.length} aria-expanded={escolhendoDia} onClick={() => { setEscolhendoDia(x => !x); setPrevia(null) }}
+            <button type="button" disabled={ocupado || !livres.length || analisando !== null} aria-expanded={escolhendoDia} onClick={() => { setEscolhendoDia(x => !x); setPrevia(null) }}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-zinc-800 text-zinc-100 border border-zinc-700 disabled:opacity-50">
               <CalendarPlus className="w-4 h-4 text-green-400" /><span className="text-left">Encaixar num dia livre{!livres.length && <span className="block text-xs font-normal text-zinc-500">Não tem dia livre até domingo</span>}</span>
             </button>

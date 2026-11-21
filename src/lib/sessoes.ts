@@ -141,7 +141,8 @@ export async function desmarcarExercicio(sessao: Sessao, exercicioId: string): P
   delete detalhes[exercicioId]
   const nova: Sessao = { ...sessao, series_realizadas: feitos, detalhes, concluido: false, data_fim: null }
   if (!sessao.id.startsWith('local-')) {
-    await supabase.from('sessoes_treino').update({ series_realizadas: feitos, detalhes, concluido: false, data_fim: null }).eq('id', sessao.id)
+    const { error } = await supabase.from('sessoes_treino').update({ series_realizadas: feitos, detalhes, concluido: false, data_fim: null }).eq('id', sessao.id)
+    if (error) throw new Error(error.message)
   }
   salvarLocal(nova)
   return nova

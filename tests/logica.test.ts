@@ -367,12 +367,12 @@ await t('treino perdido: dividir nesta semana e na próxima quando a semana não
   assert.deepEqual(ajustesDaSemana(duas.plano, '2026-11-17').map(a => [a.letra, a.ate]), [['B', '2026-11-22']], 'na semana seguinte ainda aparece para desfazer')
   // resposta da IA: só vale com todos os exercícios uma vez e em sessões válidas
   const ids = p.dias[1].exercicios.map(e => e.id)
-  const ia = divisaoPorAtribuicao(p, perdido, '2026-11-12', false, 2, { '2026-11-13': [ids[0], ids[2]], '2026-11-16': [ids[1]], '2026-11-20': [ids[3]] }, 'ok')!
+  const ia = divisaoPorAtribuicao(p, perdido, '2026-11-12', false, 2, { '2026-11-13|C': [ids[0], ids[2]], '2026-11-16|A': [ids[1]], '2026-11-20|C': [ids[3]] }, 'ok')!
   assert.equal(ia.fonte, 'ia'); assert.deepEqual(ia.destinos.map(d => d.series), [8, 4, 3]); assert.deepEqual(ia.alertas, [])
-  assert.equal(divisaoPorAtribuicao(p, perdido, '2026-11-12', false, 2, { '2026-11-13': ids.slice(0, 3) }), null, 'faltou exercício')
-  assert.equal(divisaoPorAtribuicao(p, perdido, '2026-11-12', false, 2, { '2026-11-13': ids, '2026-11-16': [ids[0]] }), null, 'repetiu exercício')
-  assert.equal(divisaoPorAtribuicao(p, perdido, '2026-11-12', false, 2, { '2026-11-18': ids }), null, 'quarta é o próprio treino B')
-  assert.deepEqual(divisaoPorAtribuicao(p, perdido, '2026-11-12', false, 2, { '2026-11-13': ids })!.alertas, ['Fica puxado: +15 séries em sexta, 13/11.'], 'o app confere e avisa')
+  assert.equal(divisaoPorAtribuicao(p, perdido, '2026-11-12', false, 2, { '2026-11-13|C': ids.slice(0, 3) }), null, 'faltou exercício')
+  assert.equal(divisaoPorAtribuicao(p, perdido, '2026-11-12', false, 2, { '2026-11-13|C': ids, '2026-11-16|A': [ids[0]] }), null, 'repetiu exercício')
+  assert.equal(divisaoPorAtribuicao(p, perdido, '2026-11-12', false, 2, { '2026-11-18|B': ids }), null, 'quarta é o próprio treino B')
+  assert.deepEqual(divisaoPorAtribuicao(p, perdido, '2026-11-12', false, 2, { '2026-11-13|C': ids })!.alertas, ['Fica puxado: +15 séries em sexta, 13/11.'], 'o app confere e avisa')
   // ombro: frente, lateral e trás são partes diferentes
   assert.equal(parteDoExercicio({ id: 'x', nome: 'Elevação frontal com halteres', grupos_musculares: [], series: 3, repeticoes: '10', tempo_execucao_segundos: 40, tempo_descanso_segundos: 60 }), 'Ombro (frente)')
   assert.equal(parteDoExercicio({ id: 'x', nome: 'Crucifixo invertido com halteres', grupos_musculares: [], series: 3, repeticoes: '10', tempo_execucao_segundos: 40, tempo_descanso_segundos: 60 }), 'Ombro (trás)')
@@ -546,5 +546,19 @@ await t('contador: pular vai da série para o descanso e do descanso para a pró
   const wFinal = fase('work', 1, 1)
   assert.equal(destinoPular(c, wFinal.inicio + 2)!.para, 'fim', 'última série do treino: fim')
   assert.equal(destinoPular(c, c.total - 0.1), null)
+})
+await t('treino perdido: duas sessões no mesmo dia são vagas diferentes (sem volume em dobro)', () => {
+  const p = normalizarPlano({ versao: 2, dias: [
+    { letra: 'A', grupos: ['peito'], exercicios: [{ nome: 'Supino reto com barra', series: 4 }] },
+    { letra: 'B', grupos: ['biceps', 'triceps'], exercicios: [{ nome: 'Rosca direta com barra', series: 3 }, { nome: 'Tríceps pulley com corda', series: 3 }] },
+    { letra: 'C', grupos: ['costas'], exercicios: [{ nome: 'Remada curvada com barra', series: 4 }] },
+    { letra: 'D', grupos: ['quadriceps'], exercicios: [{ nome: 'Agachamento livre com barra', series: 4 }] },
+  ], agenda: [{ letra: 'A', diaSemana: 'Segunda' }, { letra: 'B', diaSemana: 'Quarta' }, { letra: 'C', diaSemana: 'Domingo' }, { letra: 'D', diaSemana: 'Domingo' }] })
+  const [perdido] = treinosPerdidos(p, '2026-11-12', [0])
+  assert.equal(perdido.letra, 'B')
+  const div = planejarDivisao(p, perdido, '2026-11-12', false, 1)!
+  const extras = div.plano.extras!
+  assert.equal(extras.length, 2, 'cada exercício do treino perdido entra uma vez só')
+  assert.equal(div.destinos.reduce((t, d) => t + d.exercicios.length, 0), 2)
 })
 console.log(`\n${ok} testes passaram`)

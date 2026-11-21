@@ -80,11 +80,12 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
   // Execução do exercício atual ampliada por cima da contagem
   const [execucaoAberta, setExecucaoAberta] = useState(false)
   const [rascunhoTempo, setRascunhoTempo] = useState<string | null>(null)
-  const timerAjuste = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // Um temporizador por campo: mudar o trabalho e logo a carga (ou o descanso) não cancela a mudança anterior
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const depois = (chave: string, ms: number, f: () => void) => { clearTimeout(timers.current[chave]); timers.current[chave] = setTimeout(f, ms) }
   const mudarCarga = (exId: string, nova: string) => {
     setItens(l => l.map(e => (e.id === exId ? { ...e, carga: nova } : e)))
-    clearTimeout(timerAjuste.current)
-    timerAjuste.current = setTimeout(() => onAjuste?.(exId, { carga: normalizarCarga(nova) }), 800)
+    depois(`carga-${exId}`, 800, () => onAjuste?.(exId, { carga: normalizarCarga(nova) }))
   }
   /** Novo tempo de trabalho/descanso: vale para as próximas fases do exercício atual e fica salvo no treino. */
   const mudarTempo = (exIdx: number, campo: 'exec' | 'desc', seg: number) => {
@@ -93,11 +94,10 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
     const chave = campo === 'exec' ? 'tempo_execucao_segundos' : 'tempo_descanso_segundos'
     const v = campo === 'exec' ? Math.min(3600, Math.max(5, seg)) : Math.min(600, Math.max(0, seg))
     setItens(l => l.map((e, i) => (i === exIdx ? { ...e, [chave]: v } : e)))
-    clearTimeout(timerAjuste.current)
-    timerAjuste.current = setTimeout(() => {
+    depois(`${campo}-${exIdx}`, 700, () => {
       playerRef.current?.atualizarTempos(exIdx, campo === 'exec' ? { exec: v } : { desc: v })
       onAjuste?.(ex.id, { [chave]: v })
-    }, 700)
+    })
   }
   const feitasRef = useRef(0)
   const avulsoSalvo = useRef(false)
@@ -144,16 +144,22 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
   const alternarMudo = () => { const m = !mudo; setMudo(m); playerRef.current?.setMudo(m); salvarAudio({ mudo: m }) }
 
   // Tela sempre ligada e tela cheia enquanto o contador está aberto
+  // Contador contando (do iniciar até o fim/encerrar/fechar): só nesse intervalo a tela fica sempre ligada
+  const ativo = useRef(false)
   const pedirWakeLock = async () => {
+    if (!ativo.current) return
     telaLigadaNativa(true)
     try {
       const wl = (navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<WakeLockSentinel> } }).wakeLock
       if (wl && (!wakeRef.current || wakeRef.current.released)) {
-        wakeRef.current = await wl.request('screen')
+        const w = await wl.request('screen')
+        // terminou ou saiu enquanto o pedido estava em andamento: solta na hora
+        if (!ativo.current) { w.release().catch(() => {}); return }
+        wakeRef.current = w
       }
     } catch { /* não suportado ou negado */ }
   }
-  const liberarWakeLock = () => { telaLigadaNativa(false); wakeRef.current?.release().catch(() => {}); wakeRef.current = null }
+  const liberarWakeLock = () => { ativo.current = false; telaLigadaNativa(false); wakeRef.current?.release().catch(() => {}); wakeRef.current = null }
   const entrarTelaCheia = () => { document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {}) }
   const sairTelaCheia = () => { if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}) }
   /** Solta os controles de mídia do sistema (a música volta a ser a dona do som e do volume). */
@@ -197,7 +203,7 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
           userId: user.id, treinoId: treino.id, treinoNome: treino.nome, dia: diaIdx,
           exercicioId: ex.id, series, exerciciosDoTreino: dia.exercicios.map(e => ({ id: e.id, series: e.series })),
           // carga atual (pode ter sido mudada na tela da contagem)
-          exercicio: { ...ex, carga: dia.exercicios.find(e => e.id === ex.id)?.carga ?? ex.carga },
+          exercicio: ex,
         })
         setTreinoCompleto(s.concluido)
         onSessao(s)
@@ -227,12 +233,18 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
       const oculto = document.visibilityState === 'hidden'
       // Fora da frente / tela bloqueada: as falas passam para o relógio de áudio, que não congela
       playerRef.current?.segundoPlano(oculto)
-      if (!oculto) { tick(); pedirWakeLock() }
+      if (!oculto) { tick(); if (ativo.current) pedirWakeLock() }
     }
     document.addEventListener('visibilitychange', vis)
     window.addEventListener('pagehide', vis)
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', vis); window.removeEventListener('pagehide', vis) }
   }, [tela])
+
+  // Sempre a versão atual (carga mudada no meio do treino vai para o histórico de carga)
+  const registrarRef = useRef(registrar)
+  registrarRef.current = registrar
+  const itensRef = useRef(itens)
+  itensRef.current = itens
 
   const estado = playerRef.current && tela === 'rodando' ? estadoEm(playerRef.current.crono, t) : null
   // Botão "Pular": série → próximo descanso; descanso → contagem da próxima série
@@ -246,6 +258,8 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
   }
   const idxAtual = estado?.fase.exercicio ?? 0
   const exAtual = itens[idxAtual]
+  // No descanso entre exercícios, a tela (e os ajustes) já são do próximo exercício
+  const idxEdicao = estado?.fase.proximo ?? idxAtual
 
   // Informações na tela de bloqueio / central de controle
   useEffect(() => {
@@ -266,12 +280,12 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
     const clips = base ? { ...base, ...nomesRef.current } : null
     const cfg = lista.map(e => ({ series: e.series, execSeg: Math.max(5, e.tempo_execucao_segundos), descansoSeg: e.tempo_descanso_segundos, nome: e.nome }))
     const p = new TreinoPlayer(cfg, clips, {
-      onSerieConcluida: (i, serie) => { feitasRef.current++; setSeriesSalvas(n => n + 1); registrar(lista[i], serie) },
+      onSerieConcluida: (i, serie) => { feitasRef.current++; setSeriesSalvas(n => n + 1); registrarRef.current(itensRef.current[i] ?? lista[i], serie) },
       onExercicioConcluido: i => { setRegistrados(r => [...r, i]) },
       onSeriesConcluidas: () => {},
       // Fim da última fala: desliga o som do contador na hora, para a música voltar ao volume normal
       onFim: () => {
-        setTela('concluido'); liberarWakeLock(); sairTelaCheia(); p.parar(); limparMidia(); salvarAvulso(lista[0])
+        setTela('concluido'); setConfirmandoSaida(false); setEditando(null); setExecucaoAberta(false); liberarWakeLock(); sairTelaCheia(); p.parar(); limparMidia(); salvarAvulso(lista[0])
         // Ergogênicos "depois do treino": avisa no celular (o cartão aparece na tela de conclusão)
         if (user) avisarRotinaDoTreino(user.id, 'depois').catch(() => {})
       },
@@ -295,10 +309,13 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
     setTreinoCompleto(false)
     setT(0)
     setPausado(false)
+    setConfirmandoSaida(false); setEditando(null); setExecucaoAberta(false); setPrecisaToque(false); setRascunhoTempo(null)
+    ativo.current = true
     entrarTelaCheia()
     pedirWakeLock()
     // play() precisa acontecer dentro do toque do usuário (exigência do iOS/Android)
     p.iniciar().then(() => {
+      if (playerRef.current !== p) return // tocou de novo ou saiu enquanto preparava
       // Ergogênicos "antes do treino": avisa no celular ao começar
       if (user) avisarRotinaDoTreino(user.id, 'antes').catch(() => {})
       setTela('rodando')
@@ -307,10 +324,11 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
         navigator.mediaSession.setActionHandler('pause', () => { p.pausar(); setPausado(true) })
       }
     }).catch(() => {
+      p.parar()
+      if (playerRef.current !== p) return // um início mais novo continua valendo
       setErroAudio('O navegador bloqueou o áudio. Toque de novo para iniciar.')
       sairTelaCheia()
       liberarWakeLock()
-      p.parar()
       playerRef.current = null
     })
   }
@@ -455,7 +473,7 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
     )
   } else if (tela === 'rodando') {
     const fase = estado?.fase
-    const ex = exAtual
+    const ex = itens[idxEdicao]
     const series = ex?.series ?? 1
     const serieAtual = fase?.serie ?? 1
     const transicao = fase?.tipo === 'rest' && fase.proximo != null
@@ -477,7 +495,7 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
         style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <p className="text-center text-4xl font-light text-zinc-400 tabular-nums pt-10" aria-label={`Hora atual ${hora}`}>{hora}</p>
         {itens.length > 1 && ex && (
-          <p className="text-center text-[11px] text-zinc-500 pt-2 px-6 truncate">Exercício {idxAtual + 1} de {itens.length} · {ex.nome}</p>
+          <p className="text-center text-[11px] text-zinc-500 pt-2 px-6 truncate">Exercício {idxEdicao + 1} de {itens.length} · {ex.nome}</p>
         )}
         <div className="flex justify-center flex-wrap gap-1.5 px-6 pt-3" aria-label={`Série ${serieAtual} de ${series}`}>
           {Array.from({ length: series }).map((_, i) => (
@@ -544,13 +562,13 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
               const rotulo = campo === 'exec' ? 'trabalho' : 'descanso'
               const atual = campo === 'exec' ? ex.tempo_execucao_segundos : ex.tempo_descanso_segundos
               const min = campo === 'exec' ? 5 : 0, max = campo === 'exec' ? 3600 : 600
-              const confirmar = () => { if (rascunhoTempo !== null) { const v = lerTempo(rascunhoTempo); if (v !== null) mudarTempo(idxAtual, campo, v); setRascunhoTempo(null) } }
+              const confirmar = () => { if (rascunhoTempo !== null) { const v = lerTempo(rascunhoTempo); if (v !== null) mudarTempo(idxEdicao, campo, v); setRascunhoTempo(null) } }
               return (
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-[10px] text-zinc-500">editar {rotulo} · vale a partir da próxima {campo === 'exec' ? 'série' : 'pausa'}</span>
                   <div className="flex items-center gap-2" role="group" aria-label={`Ajustar ${rotulo}`}>
                     <button type="button" aria-label={`Diminuir ${rotulo}`} disabled={atual <= min}
-                      onClick={() => mudarTempo(idxAtual, campo, passoTempo(atual, -1, min, max))}
+                      onClick={() => mudarTempo(idxEdicao, campo, passoTempo(atual, -1, min, max))}
                       className="w-11 h-11 rounded-lg border border-zinc-800 text-zinc-500 text-sm disabled:opacity-30">▼</button>
                     <input aria-label={rotulo === 'trabalho' ? 'Tempo de trabalho' : 'Tempo de descanso'} value={rascunhoTempo ?? mss(atual)} inputMode="numeric" autoComplete="off"
                       onFocus={e => { setRascunhoTempo(mss(atual)); e.target.select() }}
@@ -559,7 +577,7 @@ export function useContadorTreino({ user, treino, diaIdx, dia, onSessao, avulso,
                       onKeyDown={e => { if (e.key === 'Enter') { confirmar(); setEditando(null) } }}
                       className="w-32 h-11 rounded-lg bg-black border border-zinc-800 text-center text-lg tabular-nums text-zinc-400 focus:outline-none focus:border-zinc-600" />
                     <button type="button" aria-label={`Aumentar ${rotulo}`} disabled={atual >= max}
-                      onClick={() => mudarTempo(idxAtual, campo, passoTempo(atual, 1, min, max))}
+                      onClick={() => mudarTempo(idxEdicao, campo, passoTempo(atual, 1, min, max))}
                       className="w-11 h-11 rounded-lg border border-zinc-800 text-zinc-500 text-sm disabled:opacity-30">▲</button>
                     <button type="button" onClick={() => { confirmar(); setEditando(null) }} className="text-xs text-zinc-500 px-2 h-11">ok</button>
                   </div>

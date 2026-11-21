@@ -106,6 +106,9 @@ export default function ConfiguracoesPage() {
     const { error: errLogin } = await supabase.auth.signInWithPassword({ email: user!.email!, password: excluir.senha })
     if (errLogin) { setExcluir(s => ({ ...s, processando: false })); return mostrar('erro', 'Senha incorreta.') }
     try {
+      // Fotos de evolução (privadas): apaga os arquivos antes da conta
+      const { data: fotos } = await supabase.storage.from('evolucao').list(user!.id, { limit: 1000 })
+      if (fotos?.length) await supabase.storage.from('evolucao').remove(fotos.map(f => `${user!.id}/${f.name}`))
       await chamarApi('conta', { acao: 'excluir', confirmacao: 'EXCLUIR' })
       await signOut().catch(() => {})
       navigate('/', { replace: true })

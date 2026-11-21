@@ -61,9 +61,10 @@ function Medidas({ userId }: { userId: string }) {
   async function salvar(e: React.FormEvent) {
     e.preventDefault()
     setErro('')
-    const valores = Object.fromEntries(CAMPOS.map(([c]) => [c, form[c] ? Number(form[c].replace(',', '.')) : null]))
-    if (Object.values(valores).every(v => v == null)) { setErro('Preencha pelo menos uma medida.'); return }
-    if (Object.values(valores).some(v => v != null && !Number.isFinite(v))) { setErro('Use só números (ex.: 82,5).'); return }
+    // Só os campos preenchidos: medir a cintura de manhã e o braço à tarde não apaga a cintura
+    const valores = Object.fromEntries(CAMPOS.filter(([c]) => form[c]?.trim()).map(([c]) => [c, Number(form[c].replace(',', '.'))]))
+    if (!Object.keys(valores).length) { setErro('Preencha pelo menos uma medida.'); return }
+    if (Object.values(valores).some(v => !Number.isFinite(v))) { setErro('Use só números (ex.: 82,5).'); return }
     setSalvando(true)
     const { error } = await supabase.from('medidas_corporais').upsert({ user_id: userId, data: form.data, ...valores }, { onConflict: 'user_id,data' })
     setSalvando(false)

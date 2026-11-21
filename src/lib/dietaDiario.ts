@@ -23,6 +23,9 @@ export function useRefeicoesFeitas(userId: string | undefined, dietaId: string, 
   const marcar = async (idx: number) => {
     if (!userId || !plano) return
     setOcupada(idx); setErro('')
+    // já lançada (toque duplo, outro aparelho): não lança de novo
+    const { data: ja } = await supabase.from('food_logs').select('id').eq('user_id', userId).eq('data', hoje).eq('origem', origemDieta(dietaId, idx)).limit(1)
+    if (ja?.length) { setFeitas(s => new Set(s).add(idx)); setOcupada(null); return }
     const r = plano.refeicoes?.[idx]
     const linhas = alimentosDaRefeicao(plano, idx).map(a => ({
       user_id: userId, data: hoje, refeicao: refeicaoDoDiario(r?.nome), ...a,

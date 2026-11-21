@@ -79,9 +79,11 @@ export default function TreinoDiaPage() {
     series: exercicios.reduce((s, e) => s + e.series, 0), minutos: minutos && minutos > 0 && minutos < 300 ? minutos : treinoDia.duracao_estimada_min,
   })
 
-  const atualizarExercicios = async (fn: (lista: ExercicioPlano[]) => ExercicioPlano[]) => {
+  /** `extras`: ajuste dos exercícios temporários (treino perdido dividido), senão ao carregar eles voltariam */
+  const atualizarExercicios = async (fn: (lista: ExercicioPlano[]) => ExercicioPlano[], extras?: (l: NonNullable<PlanoTreino['extras']>) => NonNullable<PlanoTreino['extras']>) => {
     const plano: PlanoTreino = {
       ...treino.plano,
+      ...(extras && treino.plano.extras ? { extras: extras(treino.plano.extras) } : {}),
       dias: treino.plano.dias.map((d, i) => (i === diaIdx ? { ...d, exercicios: fn(d.exercicios) } : d)),
     }
     try { await salvar(plano) } catch { setAviso('Não foi possível salvar. Verifique sua conexão.') }
@@ -110,7 +112,8 @@ export default function TreinoDiaPage() {
   }
 
   const remover = async (ex: ExercicioPlano) => {
-    if (await confirmar(`Remover "${ex.nome}" deste treino?`, { ok: 'Remover' })) atualizarExercicios(l => l.filter(e => e.id !== ex.id))
+    if (await confirmar(`Remover "${ex.nome}" deste treino?`, { ok: 'Remover' }))
+      atualizarExercicios(l => l.filter(e => e.id !== ex.id), ex.origemTemp ? l => l.filter(x => x.exercicio.id !== ex.id) : undefined)
   }
 
   // Treino completo: faz em sequência os exercícios que faltam (ou todos, se não falta nenhum)
@@ -250,7 +253,11 @@ export default function TreinoDiaPage() {
       {(() => {
         const tr = exercicios.find(e => e.id === trocando)
         return tr ? <TrocarExercicio ex={tr} equipamentos={equipamentosCobertos(treino.plano.config.equipamentos)} onFechar={() => setTrocando(null)}
-          onTrocar={c => { setTrocando(null); atualizarExercicios(l => l.map(x => (x.id === tr.id ? trocarPor(x, c, uid('e')) : x))) }} /> : null
+          onTrocar={c => {
+            setTrocando(null)
+            const novo = trocarPor(tr, c, uid('e'))
+            atualizarExercicios(l => l.map(x => (x.id === tr.id ? novo : x)), tr.origemTemp ? l => l.map(x => (x.exercicio.id === tr.id ? { ...x, exercicio: novo } : x)) : undefined)
+          }} /> : null
       })()}
       {contador.overlay}
     </div>
