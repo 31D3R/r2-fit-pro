@@ -270,9 +270,10 @@ observação; marca "feito" e a próxima vira hoje + intervalo (`src/lib/rotinaB
   `parar({ liberarTela: true })` na abertura limpa um contador órfão; toque em lembrete com o contador tocando não troca de tela;
   permissão de notificação pedida uma vez por abertura; tela "Sem conexão" do app com botão "Tentar de novo" (`errorPath`).
 
-- **App Android 1.9.2 (código 13)**: atualização com um toque (plugin `AtualizarApp`): baixa o APK de `/baixar/` dentro do app
-  (progresso) e abre o instalador do Android; na primeira vez abre o ajuste "instalar apps desconhecidos" para o R2 Fit Pro.
-  Apps até 1.9.1 continuam atualizando pelo navegador. Permissão `REQUEST_INSTALL_PACKAGES`.
+- **App Android 1.9.2 (código 13) — retirado em 21/11/2026**: tinha atualização com um toque (baixar o APK e abrir o instalador,
+  permissão `REQUEST_INSTALL_PACKAGES`). O Google Play Protect bloqueou como "App nocivo" (app fora da loja que instala apps).
+  Voltou a 1.9.1 em /baixar/ e o recurso saiu do código nativo. **Não usar `REQUEST_INSTALL_PACKAGES`.** Atualização automática
+  de verdade só pela Play Store. A próxima versão do app deve usar código 14 ou maior.
 - **Sem internet, pré-carregamento** (`src/lib/preCarregar.ts`): com internet, a cada 20 min, busca em segundo plano treinos
   (4 mais recentes), dietas (3), meta e opções, e as vozes do contador do treino mais recente (o service worker guarda).
 

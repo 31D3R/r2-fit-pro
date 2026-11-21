@@ -1,6 +1,6 @@
 {
-  "versionCode": 13,
-  "versionName": "1.9.2",
-  "arquivo": "r2-fit-pro-1.9.2.apk",
-  "novidades": "Atualização com um toque: as próximas versões baixam e instalam direto pelo app. Treinos, dietas e vozes do contador ficam guardados para usar sem internet."
+  "versionCode": 12,
+  "versionName": "1.9.1",
+  "arquivo": "r2-fit-pro-1.9.1.apk",
+  "novidades": "Lembretes com ícone de sino, botão Parar da notificação fecha o contador na tela, tela sem internet com Tentar de novo e correções do botão voltar."
 }
