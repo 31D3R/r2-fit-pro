@@ -222,7 +222,8 @@ async function contexto(browser, { logado = false, estado = 'sem_assinatura', ad
     if (nutricao && ['/rest/v1/food_logs', '/rest/v1/metas_nutricionais', '/rest/v1/alimentos_favoritos'].includes(p)) {
       const metodo = rota.request().method()
       if (metodo !== 'GET') { gravacoes.push({ tabela: p.split('/').pop(), metodo, corpo: rota.request().postDataJSON() }); return json(p.endsWith('favoritos') ? { id: 'fav1', ...rota.request().postDataJSON() } : []) }
-      if (p.endsWith('food_logs')) return json(REGISTROS)
+      // consulta pela origem (refeição da dieta já lançada hoje?): os registros de teste não vieram da dieta
+      if (p.endsWith('food_logs')) return json(url.searchParams.get('origem') ? [] : REGISTROS)
       if (p.endsWith('metas_nutricionais')) return json(nutricao === 'sem_meta' ? [] : [META])
       return json([])
     }
