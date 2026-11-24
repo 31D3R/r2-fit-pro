@@ -4,19 +4,24 @@ import { supabase } from '../lib/supabase'
 import { Button, Input } from '../components/UI'
 import { Logo } from '../components/Logo'
 import { traduzirErroAuth, validarEmail } from '../lib/formatos'
+import VerificacaoHumana, { verificacaoLigada } from '../components/VerificacaoHumana'
 
 export default function RecuperarSenhaPage() {
   const [email, setEmail] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
   const [enviado, setEnviado] = useState(false)
+  const [captcha, setCaptcha] = useState<string | null>(null)
+  const [versaoCaptcha, setVersaoCaptcha] = useState(0)
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
     setErro('')
     if (!validarEmail(email)) { setErro('Informe um e-mail válido.'); return }
+    if (verificacaoLigada() && !captcha) { setErro('Aguarde a verificação de segurança terminar e tente de novo.'); return }
     setEnviando(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/redefinir-senha` })
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/redefinir-senha`, captchaToken: captcha ?? undefined })
+    if (verificacaoLigada()) setVersaoCaptcha(v => v + 1)
     setEnviando(false)
     // Mensagem neutra: não revela se o e-mail está cadastrado
     if (error && !/user not found/i.test(error.message)) setErro(traduzirErroAuth(error.message))
@@ -35,6 +40,7 @@ export default function RecuperarSenhaPage() {
             <p className="text-sm text-zinc-400">Informe o e-mail da sua conta e enviaremos um link para redefinir a senha.</p>
             <Input label="E-mail" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" required />
             {erro && <p role="alert" className="text-red-400 text-sm">{erro}</p>}
+            <VerificacaoHumana onToken={setCaptcha} versao={versaoCaptcha} acao="recuperar_senha" />
             <Button type="submit" loading={enviando} className="w-full">Enviar link</Button>
           </form>
         )}

@@ -356,6 +356,43 @@ await t('cadastro valida campos e exige aceite dos termos', async () => {
   await ctx.close()
 })
 
+await t('cadastro contra robôs: envio instantâneo é barrado, campo-isca não cria conta, pessoa de verdade cria', async () => {
+  const { ctx, page } = await contexto(browser)
+  const cadastros = []
+  await ctx.route('https://mock.supabase.co/auth/v1/signup**', r => { cadastros.push(r.request().postDataJSON()); return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'n1', email: 'novo@cliente.com', identities: [{ id: 'i1' }] }) }) })
+  const preencher = async () => {
+    await page.getByLabel('Nome').fill('Novo Cliente')
+    await page.getByLabel('E-mail', { exact: true }).fill('novo@cliente.com')
+    await page.getByLabel('Senha', { exact: true }).fill('SenhaForte1')
+    await page.getByLabel('Confirmar senha').fill('SenhaForte1')
+    await page.getByRole('checkbox').first().check()
+  }
+  // robô: preenche e envia na hora
+  await page.goto(BASE + '/auth?modo=cadastro')
+  await preencher()
+  await page.getByRole('button', { name: 'Criar conta' }).last().click()
+  await page.getByText('Confira os dados e toque em Criar conta de novo.').waitFor()
+  assert.equal(cadastros.length, 0, 'envio instantâneo não chega ao servidor')
+  // robô que preenche o campo escondido: parece que deu certo, mas nada é criado
+  await page.goto(BASE + '/auth?modo=cadastro')
+  await preencher()
+  await page.locator('input[name="site_empresa"]').fill('http://spam.example', { force: true })
+  await page.waitForTimeout(2700)
+  await page.getByRole('button', { name: 'Criar conta' }).last().click()
+  await page.getByText(/Conta criada!/).waitFor()
+  assert.equal(cadastros.length, 0, 'campo-isca preenchido não cria conta')
+  // pessoa: preenche com calma
+  await page.goto(BASE + '/auth?modo=cadastro')
+  await preencher()
+  await page.waitForTimeout(2700)
+  await page.getByRole('button', { name: 'Criar conta' }).last().click()
+  await page.getByText(/Conta criada!/).waitFor()
+  assert.equal(cadastros.length, 1); assert.equal(cadastros[0].email, 'novo@cliente.com')
+  const caixa = await page.locator('input[name="site_empresa"]').boundingBox()
+  assert.ok(!caixa || caixa.x + caixa.width < 0, 'campo-isca fora da tela (pessoas não veem)')
+  await ctx.close()
+})
+
 await t('login: 5 falhas bloqueiam novas tentativas temporariamente', async () => {
   const { ctx, page } = await contexto(browser)
   await ctx.unroute('https://mock.supabase.co/**')

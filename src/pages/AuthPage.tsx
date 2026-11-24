@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -7,6 +7,7 @@ import { Logo } from '../components/Logo'
 import { carregarConfig } from '../lib/config'
 import { traduzirErroAuth, validarEmail, validarSenha } from '../lib/formatos'
 import { caminhoInterno } from '../lib/caminhoSeguro'
+import VerificacaoHumana, { verificacaoLigada } from '../components/VerificacaoHumana'
 
 type Mode = 'login' | 'register'
 
@@ -41,6 +42,12 @@ export default function AuthPage() {
   const [nome, setNome] = useState('')
   const [aceite, setAceite] = useState(false)
   const [marketing, setMarketing] = useState(false)
+  // Contra robôs: verificação "não sou robô", campo-isca invisível e tempo mínimo para preencher o cadastro
+  const [captcha, setCaptcha] = useState<string | null>(null)
+  const [versaoCaptcha, setVersaoCaptcha] = useState(0)
+  const [isca, setIsca] = useState('')
+  const abertoEm = useRef(Date.now())
+  useEffect(() => { abertoEm.current = Date.now() }, [mode])
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState('')
@@ -76,10 +83,17 @@ export default function AuthPage() {
       if (bloqueioRestante() > 0) { setEspera(bloqueioRestante()); return }
     }
 
+    if (mode === 'register') {
+      // robô que preenche tudo (até o campo escondido) ou envia em menos de 2,5 s: finge que deu certo e não cria nada
+      if (isca.trim()) { setSuccess('Conta criada! Enviamos um link de confirmação para o seu e-mail. Confirme para entrar.'); return }
+      if (Date.now() - abertoEm.current < 2500) { setError('Confira os dados e toque em Criar conta de novo.'); abertoEm.current = Date.now() - 1000; return }
+    }
+    if (verificacaoLigada() && !captcha) { setError('Aguarde a verificação de segurança terminar e tente de novo.'); return }
+
     setSubmitting(true)
     try {
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password, options: { captchaToken: captcha ?? undefined } })
         if (error) {
           if (/Invalid login/i.test(error.message)) { registrarFalha(); setEspera(bloqueioRestante()) }
           if (/Email not confirmed/i.test(error.message)) setPodeReenviar(true)
@@ -93,6 +107,7 @@ export default function AuthPage() {
           password,
           options: {
             emailRedirectTo: redirect,
+            captchaToken: captcha ?? undefined,
             data: { nome: nome.trim().slice(0, 120), versao_termos: textos.versao_termos, marketing_opt_in: marketing },
           },
         })
@@ -109,12 +124,15 @@ export default function AuthPage() {
       setError(traduzirErroAuth(err instanceof Error ? err.message : 'Erro desconhecido'))
     } finally {
       setSubmitting(false)
+      // cada verificação vale uma vez: pede outra para a próxima tentativa
+      if (verificacaoLigada()) setVersaoCaptcha(v => v + 1)
     }
   }
 
   const reenviar = async () => {
     setError(''); setSuccess('')
-    const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: redirect } })
+    const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: redirect, captchaToken: captcha ?? undefined } })
+    if (verificacaoLigada()) setVersaoCaptcha(v => v + 1)
     if (error) setError(traduzirErroAuth(error.message))
     else { setSuccess('Enviamos um novo link de confirmação.'); setPodeReenviar(false) }
   }
@@ -164,6 +182,13 @@ export default function AuthPage() {
             </>
           )}
 
+          {mode === 'register' && (
+            // campo-isca: pessoas não veem; robôs que preenchem tudo caem aqui
+            <div aria-hidden="true" className="absolute -left-[9999px] w-px h-px overflow-hidden">
+              <label>Site da empresa<input type="text" name="site_empresa" tabIndex={-1} autoComplete="off" value={isca} onChange={e => setIsca(e.target.value)} /></label>
+            </div>
+          )}
+          <VerificacaoHumana onToken={setCaptcha} versao={versaoCaptcha} acao={mode === 'register' ? 'cadastro' : 'login'} />
           {error && <p role="alert" className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
           {espera > 0 && mode === 'login' && (
             <p className="text-yellow-400 text-sm bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2">Muitas tentativas. Tente novamente em {espera}s.</p>

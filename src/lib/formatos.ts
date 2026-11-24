@@ -45,6 +45,8 @@ export const validarEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.t
 /** Traduz mensagens do Supabase Auth para português. */
 export function traduzirErroAuth(msg: string): string {
   if (/Invalid login/i.test(msg)) return 'E-mail ou senha incorretos.'
+  if (/R2_EMAIL_DESCARTAVEL|R2_EMAIL_INVALIDO|Database error saving new user/i.test(msg)) return 'Use um e-mail pessoal válido. E-mails temporários ou descartáveis não são aceitos.'
+  if (/captcha/i.test(msg)) return 'Não deu para confirmar que você não é um robô. Recarregue a página e tente de novo.'
   if (/Email not confirmed/i.test(msg)) return 'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada e o spam.'
   if (/already registered|already been registered/i.test(msg)) return 'Este e-mail já está cadastrado.'
   if (/rate limit|too many|security purposes/i.test(msg)) return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'

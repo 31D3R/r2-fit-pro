@@ -151,6 +151,9 @@ await t('pagamento avulso é reconhecido pelos metadados', () => {
 await t('erros do Supabase Auth são traduzidos corretamente', () => {
   assert.equal(traduzirErroAuth('New password should be different from the old password.'), 'A nova senha deve ser diferente da atual.')
   assert.match(traduzirErroAuth('Password should be at least 8 characters.'), /Senha fraca/)
+  // cadastro com e-mail descartável (recusado no banco) e verificação de robô
+  assert.match(traduzirErroAuth('Database error saving new user'), /e-mail pessoal/)
+  assert.match(traduzirErroAuth('captcha protection: request disallowed (invalid-input-response)'), /robô/)
   assert.match(traduzirErroAuth('Password is known to be weak and easy to guess'), /Senha fraca/)
   assert.equal(traduzirErroAuth('Invalid login credentials'), 'E-mail ou senha incorretos.')
 })
