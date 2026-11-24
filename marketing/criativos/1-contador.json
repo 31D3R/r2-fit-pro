@@ -1,5 +1,5 @@
 {
- "duracao": 16.5,
+ "duracao": 18.93,
  "telas": {
   "treino": "treino.jpg"
  },
@@ -173,22 +173,22 @@
  "legendas": [
   {
    "de": 0.3,
-   "ate": 3.3,
+   "ate": 3.57,
    "texto": "Abriu o treino, tocou em *iniciar*."
   },
   {
-   "de": 3.3,
-   "ate": 6.6,
+   "de": 3.57,
+   "ate": 6.666,
    "texto": "A voz conta *5, 4, 3, 2, 1*…"
   },
   {
-   "de": 6.6,
-   "ate": 9.8,
+   "de": 6.666,
+   "ate": 8.784,
    "texto": "marca o *tempo de cada série*"
   },
   {
    "de": 9.8,
-   "ate": 12.9,
+   "ate": 12.861,
    "texto": "e o *descanso*, até com a tela bloqueada."
   }
  ],

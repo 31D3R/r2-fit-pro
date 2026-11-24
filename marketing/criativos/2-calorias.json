@@ -1,5 +1,5 @@
 {
- "duracao": 16.5,
+ "duracao": 19.42,
  "telas": {
   "diario": "diario-1.jpg",
   "d0": "add-digita-0.jpg",
@@ -24,7 +24,7 @@
   },
   {
    "de": 8.6,
-   "ate": 12.9,
+   "ate": 13.39,
    "texto": "Pronto em *segundos*"
   }
  ],
@@ -115,7 +115,7 @@
   },
   {
    "de": 9.6,
-   "ate": 12.9,
+   "ate": 13.39,
    "img": "ok",
    "realce": {
     "de": 10.0,
@@ -130,29 +130,29 @@
  "legendas": [
   {
    "de": 0.3,
-   "ate": 2.6,
+   "ate": 1.663,
    "texto": "Tocou em *adicionar*…"
   },
   {
    "de": 2.6,
-   "ate": 6.3,
+   "ate": 5.653,
    "texto": "digitou e *achou* na tabela TACO."
   },
   {
    "de": 6.3,
-   "ate": 9.6,
+   "ate": 10.823,
    "texto": "Escolhe a *medida de casa*: calorias e macros na hora."
   },
   {
-   "de": 9.6,
-   "ate": 12.9,
+   "de": 10.823,
+   "ate": 13.39,
    "texto": "Também por *foto do prato* e código de barras."
   }
  ],
  "selos": [
   {
    "de": 9.9,
-   "ate": 12.9,
+   "ate": 13.39,
    "texto": "📸 Foto do prato",
    "x": 60,
    "y": 760,
@@ -160,7 +160,7 @@
   },
   {
    "de": 10.4,
-   "ate": 12.9,
+   "ate": 13.39,
    "texto": "🔎 Código de barras",
    "x": 500,
    "y": 1260,
@@ -169,7 +169,7 @@
   }
  ],
  "fim": {
-  "de": 12.9,
+  "de": 13.39,
   "titulo": "Sua meta, *todo dia*",
   "sub": "Diário de calorias rápido, com a comida que você come.",
   "cta": "Teste grátis por 7 dias"

@@ -1,5 +1,5 @@
 {
- "duracao": 16.5,
+ "duracao": 21.95,
  "telas": {
   "inicio": "inicio.jpg",
   "treino": "treino-completo.png",
@@ -11,35 +11,35 @@
  "titulos": [
   {
    "de": 0,
-   "ate": 4.2,
+   "ate": 5.584,
    "texto": "Treino, dieta e calorias"
   },
   {
-   "de": 4.2,
-   "ate": 8.4,
+   "de": 5.584,
+   "ate": 10.952,
    "texto": "em *um app só*"
   },
   {
-   "de": 8.4,
-   "ate": 12.9,
+   "de": 10.952,
+   "ate": 15.914,
    "texto": "até *sem internet*"
   }
  ],
  "cenas": [
   {
-   "de": 0,
-   "ate": 2.2,
+   "de": 0.0,
+   "ate": 3.064,
    "img": "inicio"
   },
   {
-   "de": 2.2,
-   "ate": 4.3,
+   "de": 3.064,
+   "ate": 5.584,
    "img": "treino",
    "entrada": "lado"
   },
   {
-   "de": 4.3,
-   "ate": 6.6,
+   "de": 5.584,
+   "ate": 7.975,
    "img": "dieta",
    "entrada": "lado",
    "zoom": {
@@ -51,8 +51,8 @@
    }
   },
   {
-   "de": 6.6,
-   "ate": 8.6,
+   "de": 7.975,
+   "ate": 10.952,
    "img": "peso",
    "entrada": "lado",
    "zoom": {
@@ -64,19 +64,19 @@
    }
   },
   {
-   "de": 8.6,
-   "ate": 10.6,
+   "de": 10.952,
+   "ate": 13.079,
    "img": "jejum",
    "entrada": "lado"
   },
   {
-   "de": 10.6,
-   "ate": 12.9,
+   "de": 13.079,
+   "ate": 15.914,
    "img": "off",
    "entrada": "lado",
    "realce": {
-    "de": 11.0,
-    "ate": 12.7,
+    "de": 13.479,
+    "ate": 15.714,
     "x": 0,
     "y": 0.041,
     "w": 1,
@@ -87,47 +87,47 @@
  "legendas": [
   {
    "de": 0.2,
-   "ate": 2.2,
+   "ate": 3.214,
    "texto": "Meta de calorias do *seu jeito*"
   },
   {
-   "de": 2.2,
-   "ate": 4.3,
+   "de": 3.214,
+   "ate": 5.734,
    "texto": "Treino com *contador e voz*"
   },
   {
-   "de": 4.3,
-   "ate": 6.6,
-   "texto": "Dieta montada pela *IA*"
+   "de": 5.734,
+   "ate": 8.125,
+   "texto": "Dieta montada pela *inteligência artificial*"
   },
   {
-   "de": 6.6,
-   "ate": 8.6,
+   "de": 8.125,
+   "ate": 11.102,
    "texto": "Relatório da semana em *PDF*"
   },
   {
-   "de": 8.6,
-   "ate": 10.6,
+   "de": 11.102,
+   "ate": 13.229,
    "texto": "*Jejum*, água e lembretes"
   },
   {
-   "de": 10.6,
-   "ate": 12.9,
+   "de": 13.229,
+   "ate": 15.914,
    "texto": "Sem sinal na academia? *Funciona*."
   }
  ],
  "selos": [
   {
-   "de": 4.4,
-   "ate": 8.4,
+   "de": 5.784,
+   "ate": 10.952,
    "texto": "🤖 Com IA",
    "x": 80,
    "y": 760,
    "giro": -5
   },
   {
-   "de": 10.7,
-   "ate": 12.9,
+   "de": 13.279,
+   "ate": 15.914,
    "texto": "📶 Offline",
    "x": 620,
    "y": 1240,
@@ -136,7 +136,7 @@
   }
  ],
  "fim": {
-  "de": 12.9,
+  "de": 15.914,
   "titulo": "Tudo em *um app*",
   "sub": "Treino, dieta, calorias, peso e jejum. Com IA.",
   "cta": "Teste grátis por 7 dias"

@@ -1,5 +1,5 @@
 {
- "duracao": 16.5,
+ "duracao": 18.93,
  "telas": {
   "perdido": "semana-perdido.png",
   "previa": "semana-previa.png",
@@ -81,7 +81,7 @@
  "legendas": [
   {
    "de": 0.3,
-   "ate": 4.4,
+   "ate": 2.034,
    "texto": "Faltou um dia? *Acontece*."
   },
   {
@@ -91,12 +91,12 @@
   },
   {
    "de": 7.0,
-   "ate": 9.4,
+   "ate": 9.601,
    "texto": "sem pesar o mesmo músculo em *dias seguidos*."
   },
   {
-   "de": 9.4,
-   "ate": 12.9,
+   "de": 9.601,
+   "ate": 12.877,
    "texto": "*Pronto*: semana ajustada, com um toque."
   }
  ],
