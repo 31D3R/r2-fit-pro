@@ -177,6 +177,11 @@ await t('lembretes: mensagem por tipo e validação da inscrição do aparelho',
   const boa = { endpoint: 'https://fcm.googleapis.com/fcm/send/abc123def', keys: { p256dh: 'B'.repeat(87), auth: 'a1b2c3d4e5f6g7h8i9j0kw' } }
   assert.deepEqual(lerInscricao(boa), { endpoint: boa.endpoint, p256dh: boa.keys.p256dh, auth: boa.keys.auth })
   assert.equal(lerInscricao({ ...boa, endpoint: 'http://inseguro.com/x' }), null)
+  // só serviços de notificação dos navegadores (evita usar o servidor para chamar outros sites)
+  assert.equal(lerInscricao({ ...boa, endpoint: 'https://atacante.com/coleta' }), null)
+  assert.equal(lerInscricao({ ...boa, endpoint: 'https://fcm.googleapis.com.atacante.com/x1234567' }), null)
+  assert.ok(lerInscricao({ ...boa, endpoint: 'https://web.push.apple.com/QGuKx1234567' }))
+  assert.ok(lerInscricao({ ...boa, endpoint: 'https://updates.push.services.mozilla.com/wpush/v2/abc' }))
   assert.equal(lerInscricao({ ...boa, keys: { p256dh: 'curto', auth: 'x' } }), null)
   assert.equal(lerInscricao(null), null)
 })

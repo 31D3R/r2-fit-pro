@@ -1,8 +1,23 @@
 // Service worker: instalar na tela inicial, receber lembretes e abrir sem internet.
 // Com internet, as páginas vêm sempre do site (versão mais nova) e uma cópia fica guardada;
 // sem internet, abre a cópia. Arquivos com nome versionado (/assets), ícones, vozes e animações ficam guardados ao usar.
-const CACHE = 'r2-app-v2'
-self.addEventListener('install', () => self.skipWaiting())
+const CACHE = 'r2-app-v3'
+// Ao instalar, já guarda a página e os arquivos dela: sem isso, a cópia para abrir sem internet só existiria
+// a partir da segunda abertura do app (a primeira carrega antes do service worker existir)
+self.addEventListener('install', e => {
+  self.skipWaiting()
+  e.waitUntil((async () => {
+    try {
+      const cache = await caches.open(CACHE)
+      const r = await fetch('/index.html', { cache: 'no-store' })
+      if (!r.ok || !(r.headers.get('content-type') || '').includes('text/html')) return
+      const html = await r.clone().text()
+      await cache.put('/index.html', r)
+      const arquivos = [...new Set([...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map(m => m[1]))]
+      await Promise.all(arquivos.map(a => cache.add(a).catch(() => {})))
+    } catch { /* sem internet agora: guarda depois, ao navegar */ }
+  })())
+})
 self.addEventListener('activate', e => e.waitUntil((async () => {
   // só as cópias antigas do app (as vozes de nomes, r2-voz-*, ficam)
   for (const k of await caches.keys()) if (k.startsWith('r2-app-') && k !== CACHE) await caches.delete(k)

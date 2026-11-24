@@ -27,11 +27,15 @@ export async function excluirUsuario(admin: SupabaseClient, alvo: { id: string; 
   })
   await auditar(admin, autorId, 'conta.excluida', alvo.id, { assinaturas_canceladas: subs?.length ?? 0, motivo })
 
-  // Remove arquivos pessoais
-  const { data: arquivos } = await admin.storage.from('avatars').list(alvo.id, { limit: 100 })
-  if (arquivos?.length) await admin.storage.from('avatars').remove(arquivos.map(a => `${alvo.id}/${a.name}`))
-  const { data: fotos } = await admin.storage.from('evolucao').list(alvo.id, { limit: 1000 })
-  if (fotos?.length) await admin.storage.from('evolucao').remove(fotos.map(a => `${alvo.id}/${a.name}`))
+  // Remove arquivos pessoais (foto de perfil e fotos de evolução), página por página: nada fica para trás (LGPD)
+  for (const bucket of ['avatars', 'evolucao']) {
+    for (let volta = 0; volta < 50; volta++) {
+      const { data: arquivos } = await admin.storage.from(bucket).list(alvo.id, { limit: 100 })
+      if (!arquivos?.length) break
+      const { error: erroRemover } = await admin.storage.from(bucket).remove(arquivos.map(a => `${alvo.id}/${a.name}`))
+      if (erroRemover) throw erroRemover
+    }
+  }
 
   const { error } = await admin.auth.admin.deleteUser(alvo.id)
   if (error) throw error

@@ -8,3 +8,9 @@ dist
 .env.local
 .env.*.local
 package-lock.json
+
+# Chaves e credenciais (nunca no repositório)
+*.jks
+*.keystore
+assinatura.properties
+google-services.json

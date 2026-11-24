@@ -297,6 +297,12 @@ export async function handleBilling(req: Request): Promise<Response> {
       const { data: cfg } = await admin.from('app_config').select('valor').eq('chave', 'plano').single()
       const dias = Number((cfg!.valor as Record<string, unknown>).arrependimento_dias ?? 7)
 
+      // Dois pedidos de cancelamento ao mesmo tempo (toque duplo, duas abas): só o primeiro segue (evita estorno em dobro)
+      const { data: pegou } = await admin.from('subscriptions').update({ cancelada_em: new Date().toISOString() })
+        .eq('id', sub.id).is('cancelada_em', null).select('id')
+      if (!pegou?.length) throw new ErroHttp(409, 'O cancelamento já está em andamento. Atualize a página em instantes.')
+      try {
+
       if (sub.provider_subscription_id) {
         if (sub.provider === 'asaas') await asaas('DELETE', `/subscriptions/${encodeURIComponent(sub.provider_subscription_id)}`)
         else await mp('PUT', `/preapproval/${encodeURIComponent(sub.provider_subscription_id)}`, { status: 'cancelled' })
@@ -307,7 +313,16 @@ export async function handleBilling(req: Request): Promise<Response> {
       let reembolsado = false
       let reembolsoFalhou = false
       const pedirReembolso = corpo?.reembolso === true
-      if (pedirReembolso && elegivelArrependimento(sub.iniciada_em, dias)) {
+      // Arrependimento com estorno automático uma vez por pessoa (assinar, cancelar com estorno e assinar de novo
+      // não vira Premium de graça): a partir da segunda vez, o pedido vai para a equipe avaliar
+      let jaTeveEstorno = false
+      if (pedirReembolso) {
+        const { count } = await admin.from('audit_logs').select('id', { count: 'exact', head: true })
+          .eq('actor_id', user.id).eq('acao', 'assinatura.cancelada_pelo_usuario').contains('detalhes', { reembolso: true })
+        jaTeveEstorno = (count ?? 0) > 0
+        if (jaTeveEstorno) await auditar(admin, user.id, 'assinatura.reembolso_pendente_manual', sub.id, { motivo: 'segundo_arrependimento' })
+      }
+      if (pedirReembolso && !jaTeveEstorno && elegivelArrependimento(sub.iniciada_em, dias)) {
         const { data: pagos } = await admin.from('payments').select('provider_payment_id')
           .eq('subscription_id', sub.id).eq('status', 'aprovado')
         let okReembolsos = 0
@@ -332,9 +347,16 @@ export async function handleBilling(req: Request): Promise<Response> {
         ok: true, reembolsado,
         aviso: reembolsoFalhou
           ? 'A assinatura foi cancelada, mas o reembolso automático falhou. Nossa equipe fará o estorno manualmente.'
-          : undefined,
+          : jaTeveEstorno
+            ? 'A assinatura foi cancelada. Como você já teve um reembolso antes, o pedido de reembolso vai para a nossa equipe avaliar.'
+            : undefined,
         assinatura: r,
       })
+      } catch (e) {
+        // deu erro antes de cancelar: libera para a pessoa tentar de novo
+        await admin.from('subscriptions').update({ cancelada_em: null }).eq('id', sub.id).neq('status', 'cancelada')
+        throw e
+      }
     }
 
     // Diagnóstico da integração (somente admin): mostra a resposta completa do Mercado Pago

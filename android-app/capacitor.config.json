@@ -9,8 +9,9 @@
     "allowNavigation": [
       "r2fitpro.com.br",
       "www.r2fitpro.com.br",
-      "*.supabase.co",
-      "*.asaas.com"
+      "pzmhlxhdqghamyxgegwq.supabase.co",
+      "www.asaas.com",
+      "asaas.com"
     ]
   },
   "android": {

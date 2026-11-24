@@ -6,6 +6,7 @@ import { Button, Input, Spinner } from '../components/UI'
 import { Logo } from '../components/Logo'
 import { carregarConfig } from '../lib/config'
 import { traduzirErroAuth, validarEmail, validarSenha } from '../lib/formatos'
+import { caminhoInterno } from '../lib/caminhoSeguro'
 
 type Mode = 'login' | 'register'
 
@@ -28,7 +29,7 @@ function registrarFalha() {
 const limparFalhas = () => { try { localStorage.removeItem(CHAVE_TENTATIVAS) } catch { /* ignore */ } }
 
 /** Só permite redirecionar para rotas internas. */
-const destinoSeguro = (next: string | null) => (next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard')
+const destinoSeguro = (next: string | null) => caminhoInterno(next) ?? '/dashboard'
 
 export default function AuthPage() {
   const { user, loading } = useAuth()

@@ -45,6 +45,7 @@ import { ListaAlunos, PainelAluno } from './pages/AlunosPage'
 import { Spinner } from './components/UI'
 import WelcomeSplash from './components/WelcomeSplash'
 import { contadorNativo, ehAppNativo, escutarVoltar } from './lib/nativo'
+import { caminhoInterno } from './lib/caminhoSeguro'
 import AvisoAtualizacaoApp from './components/AvisoAtualizacaoApp'
 
 function Inicio() {
@@ -140,7 +141,7 @@ function SincronizarApp() {
   // Só uma vez ao abrir: o navigate muda a cada troca de tela e repetir isto empilhava o botão voltar e parava o contador.
   useEffect(() => {
     if (!ehAppNativo()) return
-    ;(window as unknown as { __r2Navegar?: (u: string) => void }).__r2Navegar = (u: string) => { if (u.startsWith('/')) navRef.current(u) }
+    ;(window as unknown as { __r2Navegar?: (u: string) => void }).__r2Navegar = (u: string) => { const c = caminhoInterno(u); if (c) navRef.current(c) }
     escutarVoltar()
     // site acabou de abrir: um contador nativo que ficou tocando de antes (app recarregado) não tem mais quem o pare
     const c = contadorNativo()

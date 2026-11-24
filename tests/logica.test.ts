@@ -13,6 +13,7 @@ import { revisaoSemanal, sequenciaETreinos } from '../src/lib/progressoBase'
 import { umRM, anilhasPorLado } from '../src/lib/calculadoras'
 import { normalizarJejum, situacaoJejum, encerrar, duracao } from '../src/lib/jejumBase'
 import { listaDeCompras } from '../src/lib/comprasBase'
+import { caminhoInterno } from '../src/lib/caminhoSeguro'
 import { alimentosDaRefeicao, refeicaoDoDiario } from '../src/lib/dietaDiarioBase'
 import { DocPdf, winAnsi } from '../src/lib/pdfSimples'
 
@@ -600,4 +601,10 @@ await t('sem internet: filtros, fila por cima das leituras guardadas e resposta 
   assert.deepEqual(respostaDaFila({ ...ins, cabecalhos: { Prefer: 'return=representation', Accept: 'application/vnd.pgrst.object+json' } }).corpo, (ins.corpo as unknown[])[0])
   assert.equal(respostaDaFila(ins).status, 201)
 })
+await t('caminho interno: só rotas do próprio app (sem sair do site)', () => {
+  for (const ok of ['/dashboard', '/calorias?adicionar=Almo%C3%A7o', '/treino/abc-1/dia/0', '/convite/K7P2QX']) assert.equal(caminhoInterno(ok), ok)
+  for (const ruim of ['//evil.com', '/\\evil.com', '/%5C', 'https://evil.com', 'javascript:alert(1)', '/a//b', '', null, '/x\\y', 'dashboard'])
+    assert.equal(caminhoInterno(ruim), ruim === '/%5C' ? '/%5C' : null, String(ruim))
+})
+
 console.log(`\n${ok} testes passaram`)

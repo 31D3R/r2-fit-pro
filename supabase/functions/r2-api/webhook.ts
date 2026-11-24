@@ -2,6 +2,7 @@
 // Autenticação por assinatura HMAC (x-signature); idempotente por evento;
 // o estado é sempre reconsultado na API do Mercado Pago antes de ser aplicado.
 import { ErroHttp, log } from '../_shared/http.ts'
+import { curto, podeRegistrarRejeitado } from '../_shared/rejeitados.ts'
 import { clienteAdmin } from '../_shared/supa.ts'
 import { validarAssinaturaWebhook, lerNotificacao, chaveEvento } from '../_shared/mpLogic.ts'
 import { registrarPreapproval, registrarPagamento, registrarAuthorizedPayment } from '../_shared/sync.ts'
@@ -30,10 +31,13 @@ export async function handleWebhook(req: Request): Promise<Response> {
   const payload = { topico, dataId, acao, live_mode: corpo?.live_mode ?? null, query: Object.fromEntries(url.searchParams) }
 
   if (!verificacao.valida) {
-    await admin.from('webhook_events').insert({
-      event_key: `rejeitado:${crypto.randomUUID()}`, topico, acao, resource_id: dataId,
-      assinatura_valida: false, status: 'rejeitado', erro: verificacao.motivo, payload,
-    })
+    // Quem não tem a assinatura não grava nada grande no banco: campos curtos e no máximo 30 registros por 10 minutos
+    if (await podeRegistrarRejeitado(admin)) {
+      await admin.from('webhook_events').insert({
+        event_key: `rejeitado:${crypto.randomUUID()}`, topico: curto(topico), acao: curto(acao), resource_id: curto(dataId),
+        assinatura_valida: false, status: 'rejeitado', erro: curto(verificacao.motivo), payload: { topico: curto(topico), dataId: curto(dataId) },
+      })
+    }
     log('warn', 'webhook_rejeitado', { motivo: verificacao.motivo, topico })
     return resposta(401, { erro: 'Assinatura inválida' })
   }

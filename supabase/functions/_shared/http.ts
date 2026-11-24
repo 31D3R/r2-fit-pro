@@ -4,7 +4,8 @@ const ORIGENS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://r2fitpro.com.br,htt
 
 export function corsHeaders(req: Request): Record<string, string> {
   const origem = req.headers.get('origin') ?? ''
-  const permitida = ORIGENS.includes(origem) || /^https:\/\/r2-fit-[a-z0-9-]+\.vercel\.app$/.test(origem)
+  // prévias da Vercel só do nosso time (rivaldo1): outro projeto chamado r2-fit-* não entra
+  const permitida = ORIGENS.includes(origem) || /^https:\/\/r2-fit-[a-z0-9-]+-rivaldo1\.vercel\.app$/.test(origem)
   return {
     'Access-Control-Allow-Origin': permitida ? origem : ORIGENS[0],
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

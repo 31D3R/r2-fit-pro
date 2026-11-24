@@ -24,6 +24,12 @@ export async function handleLembretes(req: Request): Promise<Response> {
       if (!(await rpc<boolean>(admin, 'tem_premium', { uid: user.id }))) throw new ErroHttp(403, 'Lembretes fazem parte do Premium.')
       const insc = lerInscricao(corpo?.inscricao)
       if (!insc) throw new ErroHttp(400, 'Inscrição de notificação inválida.')
+      // o mesmo endereço já registrado em outra conta (outra pessoa no mesmo navegador): passa para esta conta só
+      // se a chave do aparelho confere (quem não tem a chave não consegue "pegar" a inscrição de outra pessoa)
+      const { data: atual } = await admin.from('push_inscricoes').select('user_id, p256dh, auth').eq('endpoint', insc.endpoint).maybeSingle()
+      if (atual && atual.user_id !== user.id && (atual.p256dh !== insc.p256dh || atual.auth !== insc.auth)) {
+        throw new ErroHttp(409, 'Este aparelho já está ligado a outra conta.')
+      }
       const { error } = await admin.from('push_inscricoes').upsert({
         user_id: user.id, ...insc, user_agent: String(req.headers.get('user-agent') ?? '').slice(0, 300) || null,
       }, { onConflict: 'endpoint' })

@@ -24,7 +24,8 @@ public class MainActivity extends BridgeActivity {
     private void abrirDestino(Intent intent, long atraso) {
         if (intent == null) return;
         String url = intent.getStringExtra("url");
-        if (url == null || !url.startsWith("/") || getBridge() == null) return;
+        // só caminhos do próprio site (outro app pode mandar este pedido: nada de "//site" ou "/\\site")
+        if (url == null || url.length() > 300 || !url.matches("^/(?![/\\\\])[A-Za-z0-9/_\\-?=&.%#+:~]*$") || url.contains("//") || getBridge() == null) return;
         // contador tocando: o toque num lembrete abre o app sem trocar de tela (o treino continua na frente)
         if (ContadorServico.contadorTocando) { intent.removeExtra("url"); return; }
         intent.removeExtra("url");

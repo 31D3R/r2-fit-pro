@@ -48,7 +48,7 @@ criado exclusivamente por `billing_registrar_pagamento` com pagamento aprovado c
    - o MP cancela sozinho um checkout pendente após recusa (o app já cria outro link);
    - **reembolso automático não funciona entre contas de teste** ("Unauthorized use of live credentials"); o app cancela mesmo assim, avisa o cliente e registra `assinatura.reembolso_pendente_manual` na auditoria. Acompanhar o primeiro reembolso real em produção.
 6. **Produção ativada em 29/10/2026**: `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET` trocados pelos da aplicação 272652831473739 da conta real (webhook em modo produtivo com "Planos e assinaturas" e "Pagamentos"); `docs/limpeza-dados-de-teste.sql` executado. Checkout real validado (abre a tela de pagamento do Mercado Pago). O Mercado Pago recusa com "User bad request" quando o e-mail do comprador é o da própria conta vendedora (inclusive aliases `+algo` do Gmail) — é esperado.
-7. **Acesso de cortesia** (sem cobrança): inserir em `subscriptions` uma linha com `provider = 'cortesia'`, `status = 'ativa'`, `provider_subscription_id` nulo, `iniciada_em = now()` e `periodo_atual_fim` na data final, e registrar `assinatura.cortesia_manual` em `audit_logs`. A sincronização com o Mercado Pago ignora essas linhas. Cortesia ativa: `euerika.msantos@gmail.com` (testadora, até 2099-12-31). Atenção: cortesias contam como assinatura ativa nas métricas do painel.
+7. **Acesso de cortesia** (sem cobrança): inserir em `subscriptions` uma linha com `provider = 'cortesia'`, `status = 'ativa'`, `provider_subscription_id` nulo, `iniciada_em = now()` e `periodo_atual_fim` na data final, e registrar `assinatura.cortesia_manual` em `audit_logs`. A sincronização com o Mercado Pago ignora essas linhas. Cortesia ativa: uma testadora (até 2099-12-31; ver no painel de admin). Atenção: cortesias contam como assinatura ativa nas métricas do painel.
 
 ### 1b. Formas de pagamento (desde 29/10/2026)
 | Opção | Como funciona | Rota (`/billing`) |
@@ -291,6 +291,28 @@ observação; marca "feito" e a próxima vira hoje + intervalo (`src/lib/rotinaB
   "Tela bloqueada" a 12 kHz (metade da memória); volume pelos botões laterais nesse modo.
 - Outros: modo personal sem Premium mostra convite; modo guardado por conta; perfil com "Tentar de novo"; leitor de código
   desliga a câmera se o leitor não carregar; cancelar compartilhar não copia o convite; voltar de telas abertas direto vai para o app.
+
+### Verificação de segurança antes do teste (24/11/2026)
+- Banco: as 37 tabelas com RLS; leituras só do dono (ou admin); gravações exigem Premium onde cabe; funções `admin_*` conferem
+  `is_admin`; `estado_acesso` recusa consultar outra pessoa; buckets `avatars` e `evolucao` privados, pasta por usuário.
+- Sem segredos no repositório nem no histórico (a chave OpenAI antiga, exposta em versões antigas, já foi revogada);
+  só a URL e a chave anônima do Supabase vão para o navegador.
+- Custo: `/api/voz` com limite diário no servidor (`registrar_uso_voz`, migração `20261124120000_uso_voz.sql`: 60/dia,
+  20 no teste grátis); `/api/ai` com no máximo 60 mil caracteres e 2 imagens por chamada; sem `VITE_OPENAI_API_KEY` no código.
+- Site: Content-Security-Policy no `vercel.json` (lista exata de domínios: Supabase, Open Food Facts, jsDelivr do leitor de
+  código, Mercado Pago). Os testes de tela rodam com os mesmos cabeçalhos (servidor de teste com a CSP).
+- Navegação interna (`caminhoInterno`): link de login `?next=`, ponte do app Android e notificações só aceitam caminhos do
+  próprio site (recusa `//site`, `/\site`).
+- Ao sair da conta: apaga também `r2-acesso-*`, `r2fit_sessao_*` e `r2-compras-*` do aparelho.
+- Service worker `r2-app-v3`: guarda a página e os arquivos já ao instalar (a 1ª abertura já deixa o app pronto sem internet).
+- `r2-api` (a publicar com o CLI): avisos de pagamento recusados gravam campos curtos e no máximo 30 por 10 min; notificações
+  só para serviços de push conhecidos e inscrição de outra conta exige a mesma chave; cancelamento com estorno trava
+  contra dois pedidos ao mesmo tempo; estorno automático por arrependimento uma vez por pessoa (depois vai para a equipe);
+  exclusão de conta apaga fotos página por página; CORS só para prévias do time `rivaldo1`.
+- App Android (a gerar na 1.9.3, código 14): `allowNavigation` com domínios exatos, caminho recebido por outro app
+  conferido, `allowBackup=false`.
+- Pendências do dono: ligar "Leaked password protection" no Supabase (Authentication); apagar a variável
+  `VITE_OPENAI_API_KEY` na Vercel (o servidor usa `OPENAI_API_KEY`).
 
 ## Ideias anotadas para fazer depois
 

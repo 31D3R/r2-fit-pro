@@ -19,6 +19,15 @@ export function mensagemLembrete(tipo: string): MensagemPush | null {
   return m ? { ...m, tag: `r2-${tipo}` } : null
 }
 
+/** Só os serviços de notificação dos navegadores (o servidor manda as notificações para esse endereço:
+ *  qualquer outro site seria usar o nosso servidor para fazer pedidos a terceiros). */
+export function servicoPushConhecido(endpoint: string): boolean {
+  let host = ''
+  try { host = new URL(endpoint).hostname.toLowerCase() } catch { return false }
+  return host === 'fcm.googleapis.com' || host === 'android.googleapis.com' || host === 'web.push.apple.com'
+    || host.endsWith('.push.services.mozilla.com') || host.endsWith('.notify.windows.com') || host === 'updates.push.services.mozilla.com'
+}
+
 /** Valida a inscrição enviada pelo navegador (PushSubscription.toJSON()). */
 export function lerInscricao(corpo: unknown): { endpoint: string; p256dh: string; auth: string } | null {
   // deno-lint-ignore no-explicit-any
@@ -26,7 +35,7 @@ export function lerInscricao(corpo: unknown): { endpoint: string; p256dh: string
   const endpoint = typeof c?.endpoint === 'string' ? c.endpoint : ''
   const p256dh = typeof c?.keys?.p256dh === 'string' ? c.keys.p256dh : ''
   const auth = typeof c?.keys?.auth === 'string' ? c.keys.auth : ''
-  if (!/^https:\/\/[^\s]{8,990}$/.test(endpoint)) return null
+  if (!/^https:\/\/[^\s]{8,990}$/.test(endpoint) || !servicoPushConhecido(endpoint)) return null
   if (!/^[\w-]{20,200}$/.test(p256dh) || !/^[\w-]{8,100}$/.test(auth)) return null
   return { endpoint, p256dh, auth }
 }

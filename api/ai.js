@@ -10,8 +10,21 @@ const LIMITE_DIARIO = Number(process.env.AI_LIMITE_DIARIO || 30)
 const resposta = (status, corpo) =>
   new Response(JSON.stringify(corpo), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } })
 
+// Limites por chamada (o limite diário conta chamadas; isto impede chamadas enormes que custam caro)
+const MAX_TEXTO_TOTAL = 60_000
+const MAX_IMAGENS = 2
+
 function validarMensagens(messages) {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 6) return false
+  let texto = 0, imagens = 0
+  for (const m of messages) {
+    const partes = typeof m?.content === 'string' ? [{ type: 'text', text: m.content }] : Array.isArray(m?.content) ? m.content : []
+    for (const p of partes) {
+      if (p?.type === 'text' && typeof p.text === 'string') texto += p.text.length
+      if (p?.type === 'image_url') imagens++
+    }
+  }
+  if (texto > MAX_TEXTO_TOTAL || imagens > MAX_IMAGENS) return false
   return messages.every(m => {
     if (!m || !['system', 'user', 'assistant'].includes(m.role)) return false
     if (typeof m.content === 'string') return m.content.length <= 20_000
@@ -25,7 +38,7 @@ function validarMensagens(messages) {
 export async function POST(request) {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
-  const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY
+  const openaiKey = process.env.OPENAI_API_KEY
   if (!supabaseUrl || !anonKey || !openaiKey) return resposta(503, { erro: 'Serviço de IA não configurado.' })
 
   const token = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
@@ -35,6 +48,7 @@ export async function POST(request) {
   if (bruto.length > MAX_CORPO) return resposta(413, { erro: 'Conteúdo muito grande. Use uma foto menor.' })
   let corpo
   try { corpo = JSON.parse(bruto) } catch { return resposta(400, { erro: 'Requisição inválida.' }) }
+  if (!corpo || typeof corpo !== 'object' || Array.isArray(corpo)) return resposta(400, { erro: 'Requisição inválida.' })
 
   const model = MODELOS.has(corpo.model) ? corpo.model : 'gpt-4o'
   if (!validarMensagens(corpo.messages)) return resposta(400, { erro: 'Requisição inválida.' })

@@ -1,6 +1,7 @@
 // Rotas do Asaas na Edge Function r2-api:
 //   POST /webhook/asaas      → eventos de cobrança e assinatura (cabeçalho asaas-access-token)
 //   POST /cron/asaas-webhook → cadastra/atualiza o webhook no Asaas (token de uso único do banco)
+import { curto, podeRegistrarRejeitado } from '../_shared/rejeitados.ts'
 import { log } from '../_shared/http.ts'
 import { clienteAdmin } from '../_shared/supa.ts'
 import { asaas } from '../_shared/asaas.ts'
@@ -26,10 +27,13 @@ export async function handleWebhookAsaas(req: Request): Promise<Response> {
 
   const { data: cfg } = await admin.from('asaas_config').select('webhook_token').eq('id', true).maybeSingle()
   if (!tokenIgual(req.headers.get('asaas-access-token'), cfg?.webhook_token)) {
-    await admin.from('webhook_events').insert({
-      provider: 'asaas', event_key: `rejeitado:${crypto.randomUUID()}`, topico: ev.evento, acao: ev.evento,
-      resource_id: ev.pagamentoId ?? ev.assinaturaId, assinatura_valida: false, status: 'rejeitado', erro: 'token_invalido', payload,
-    })
+    if (await podeRegistrarRejeitado(admin)) {
+      await admin.from('webhook_events').insert({
+        provider: 'asaas', event_key: `rejeitado:${crypto.randomUUID()}`, topico: curto(ev.evento), acao: curto(ev.evento),
+        resource_id: curto(ev.pagamentoId ?? ev.assinaturaId), assinatura_valida: false, status: 'rejeitado', erro: 'token_invalido',
+        payload: { evento: curto(ev.evento) },
+      })
+    }
     log('warn', 'webhook_asaas_rejeitado', { evento: ev.evento })
     return resposta(401, { erro: 'Não autorizado' })
   }

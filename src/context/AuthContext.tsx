@@ -48,7 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       detalhe: 'Conecte à internet e espere sincronizar. Se sair agora, eles se perdem.', ok: 'Sair mesmo assim', cancelar: 'Ficar', perigo: true,
     }))) throw new Error('cancelado')
     const { error } = await supabase.auth.signOut()
-    if (!error) limparOffline()
+    if (!error) {
+      limparOffline()
+      // dados pessoais guardados no aparelho (celular compartilhado: quem entrar depois não vê nada de quem saiu)
+      try {
+        for (const k of Object.keys(localStorage)) {
+          if (/^(r2-acesso-|r2fit_sessao_|r2-compras-)/.test(k)) localStorage.removeItem(k)
+        }
+      } catch { /* sem armazenamento */ }
+    }
   }
 
   return (
