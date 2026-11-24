@@ -1,0 +1,177 @@
+{
+ "duracao": 16.5,
+ "telas": {
+  "diario": "diario-1.jpg",
+  "d0": "add-digita-0.jpg",
+  "d1": "add-digita-1.jpg",
+  "d2": "add-digita-2.jpg",
+  "d3": "add-digita-3.jpg",
+  "d4": "add-digita-4.jpg",
+  "res": "add-2.jpg",
+  "med": "add-4.jpg",
+  "ok": "add-5.jpg"
+ },
+ "titulos": [
+  {
+   "de": 0,
+   "ate": 3.4,
+   "texto": "Contar calorias *sem sofrer*"
+  },
+  {
+   "de": 3.4,
+   "ate": 8.6,
+   "texto": "Comida *brasileira* de verdade"
+  },
+  {
+   "de": 8.6,
+   "ate": 12.9,
+   "texto": "Pronto em *segundos*"
+  }
+ ],
+ "cenas": [
+  {
+   "de": 0,
+   "ate": 2.6,
+   "img": "diario",
+   "toques": [
+    {
+     "t": 2.1,
+     "x": 0.3,
+     "y": 0.325
+    }
+   ],
+   "realce": {
+    "de": 0.9,
+    "ate": 2.5,
+    "x": 0.03,
+    "y": 0.233,
+    "w": 0.94,
+    "h": 0.11
+   }
+  },
+  {
+   "de": 2.6,
+   "ate": 2.9,
+   "img": "d0"
+  },
+  {
+   "de": 2.9,
+   "ate": 3.2,
+   "img": "d1"
+  },
+  {
+   "de": 3.2,
+   "ate": 3.5,
+   "img": "d2"
+  },
+  {
+   "de": 3.5,
+   "ate": 3.8,
+   "img": "d3"
+  },
+  {
+   "de": 3.8,
+   "ate": 4.1,
+   "img": "d4"
+  },
+  {
+   "de": 4.1,
+   "ate": 6.3,
+   "img": "res",
+   "toques": [
+    {
+     "t": 5.7,
+     "x": 0.4,
+     "y": 0.525
+    }
+   ],
+   "realce": {
+    "de": 4.5,
+    "ate": 5.6,
+    "x": 0.03,
+    "y": 0.501,
+    "w": 0.94,
+    "h": 0.065
+   }
+  },
+  {
+   "de": 6.3,
+   "ate": 9.6,
+   "img": "med",
+   "toques": [
+    {
+     "t": 6.7,
+     "x": 0.74,
+     "y": 0.484
+    }
+   ],
+   "zoom": {
+    "de": 0.45,
+    "ate": 0.9,
+    "escala": 1.35,
+    "x": 0.5,
+    "y": 0.72
+   }
+  },
+  {
+   "de": 9.6,
+   "ate": 12.9,
+   "img": "ok",
+   "realce": {
+    "de": 10.0,
+    "ate": 12.6,
+    "x": 0.03,
+    "y": 0.398,
+    "w": 0.94,
+    "h": 0.055
+   }
+  }
+ ],
+ "legendas": [
+  {
+   "de": 0.3,
+   "ate": 2.6,
+   "texto": "Tocou em *adicionar*…"
+  },
+  {
+   "de": 2.6,
+   "ate": 6.3,
+   "texto": "digitou e *achou* na tabela TACO."
+  },
+  {
+   "de": 6.3,
+   "ate": 9.6,
+   "texto": "Escolhe a *medida de casa*: calorias e macros na hora."
+  },
+  {
+   "de": 9.6,
+   "ate": 12.9,
+   "texto": "Também por *foto do prato* e código de barras."
+  }
+ ],
+ "selos": [
+  {
+   "de": 9.9,
+   "ate": 12.9,
+   "texto": "📸 Foto do prato",
+   "x": 60,
+   "y": 760,
+   "giro": -4
+  },
+  {
+   "de": 10.4,
+   "ate": 12.9,
+   "texto": "🔎 Código de barras",
+   "x": 500,
+   "y": 1260,
+   "giro": 3,
+   "escuro": true
+  }
+ ],
+ "fim": {
+  "de": 12.9,
+  "titulo": "Sua meta, *todo dia*",
+  "sub": "Diário de calorias rápido, com a comida que você come.",
+  "cta": "Teste grátis por 7 dias"
+ }
+}

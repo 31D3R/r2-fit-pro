@@ -1,0 +1,119 @@
+{
+ "duracao": 16.5,
+ "telas": {
+  "perdido": "semana-perdido.png",
+  "previa": "semana-previa.png",
+  "ajustada": "semana-ajustada.png"
+ },
+ "titulos": [
+  {
+   "de": 0,
+   "ate": 4.4,
+   "texto": "Perdeu o *treino*?"
+  },
+  {
+   "de": 4.4,
+   "ate": 9.4,
+   "texto": "A *IA* reorganiza a semana"
+  },
+  {
+   "de": 9.4,
+   "ate": 12.9,
+   "texto": "Sem perder o *resultado*"
+  }
+ ],
+ "cenas": [
+  {
+   "de": 0,
+   "ate": 4.4,
+   "img": "perdido",
+   "centro": true,
+   "toques": [
+    {
+     "t": 3.7,
+     "x": 0.5,
+     "y": 0.465
+    }
+   ],
+   "zoom": {
+    "de": 0.05,
+    "ate": 0.6,
+    "escala": 1.08,
+    "x": 0.5,
+    "y": 0.5
+   }
+  },
+  {
+   "de": 4.4,
+   "ate": 9.4,
+   "img": "previa",
+   "centro": true,
+   "realce": {
+    "de": 5.2,
+    "ate": 8.4,
+    "x": 0.06,
+    "y": 0.47,
+    "w": 0.88,
+    "h": 0.15
+   },
+   "toques": [
+    {
+     "t": 8.8,
+     "x": 0.69,
+     "y": 0.665
+    }
+   ]
+  },
+  {
+   "de": 9.4,
+   "ate": 12.9,
+   "img": "ajustada",
+   "centro": true,
+   "zoom": {
+    "de": 0.1,
+    "ate": 0.7,
+    "escala": 1.12,
+    "x": 0.5,
+    "y": 0.5
+   }
+  }
+ ],
+ "legendas": [
+  {
+   "de": 0.3,
+   "ate": 4.4,
+   "texto": "Faltou um dia? *Acontece*."
+  },
+  {
+   "de": 4.4,
+   "ate": 7.0,
+   "texto": "O app divide os exercícios nos *próximos dias*"
+  },
+  {
+   "de": 7.0,
+   "ate": 9.4,
+   "texto": "sem pesar o mesmo músculo em *dias seguidos*."
+  },
+  {
+   "de": 9.4,
+   "ate": 12.9,
+   "texto": "*Pronto*: semana ajustada, com um toque."
+  }
+ ],
+ "selos": [
+  {
+   "de": 5.0,
+   "ate": 9.3,
+   "texto": "🤖 Analisado pela IA",
+   "x": 330,
+   "y": 1330,
+   "giro": -3
+  }
+ ],
+ "fim": {
+  "de": 12.9,
+  "titulo": "Constância *sem culpa*",
+  "sub": "O treino se adapta à sua semana.",
+  "cta": "Teste grátis por 7 dias"
+ }
+}

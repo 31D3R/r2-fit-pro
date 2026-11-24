@@ -1,0 +1,113 @@
+{
+ "duracao": 16.5,
+ "telas": {
+  "painel": "pers-painel.jpg",
+  "aluno": "pers-aluno.jpg",
+  "msg": "pers-msg.jpg"
+ },
+ "titulos": [
+  {
+   "de": 0,
+   "ate": 4.3,
+   "texto": "Você é *personal*?"
+  },
+  {
+   "de": 4.3,
+   "ate": 8.5,
+   "texto": "Acompanhe cada *aluno*"
+  },
+  {
+   "de": 8.5,
+   "ate": 12.9,
+   "texto": "Tudo *num só lugar*"
+  }
+ ],
+ "cenas": [
+  {
+   "de": 0,
+   "ate": 4.3,
+   "img": "painel",
+   "realce": {
+    "de": 1.0,
+    "ate": 4.0,
+    "x": 0.03,
+    "y": 0.326,
+    "w": 0.94,
+    "h": 0.105
+   }
+  },
+  {
+   "de": 4.3,
+   "ate": 8.5,
+   "img": "aluno",
+   "zoom": {
+    "de": 0.3,
+    "ate": 0.9,
+    "escala": 1.25,
+    "x": 0.5,
+    "y": 0.5
+   }
+  },
+  {
+   "de": 8.5,
+   "ate": 12.9,
+   "img": "msg",
+   "realce": {
+    "de": 9.2,
+    "ate": 12.4,
+    "x": 0.06,
+    "y": 0.398,
+    "w": 0.88,
+    "h": 0.085
+   }
+  }
+ ],
+ "legendas": [
+  {
+   "de": 0.3,
+   "ate": 4.3,
+   "texto": "Veja na hora quem *parou de treinar*."
+  },
+  {
+   "de": 4.3,
+   "ate": 8.5,
+   "texto": "*Treinos, dieta e peso* de cada aluno."
+  },
+  {
+   "de": 8.5,
+   "ate": 10.8,
+   "texto": "Mande treinos, ajuste metas e *converse*."
+  },
+  {
+   "de": 10.8,
+   "ate": 12.9,
+   "texto": "Com *5 alunos* assinando, você não paga nada."
+  }
+ ],
+ "selos": [
+  {
+   "de": 1.2,
+   "ate": 4.2,
+   "texto": "⚠️ Alerta automático",
+   "x": 360,
+   "y": 1330,
+   "giro": 3,
+   "escuro": true
+  },
+  {
+   "de": 10.9,
+   "ate": 12.9,
+   "texto": "5 alunos = grátis",
+   "x": 80,
+   "y": 760,
+   "giro": -4
+  }
+ ],
+ "fim": {
+  "de": 12.9,
+  "titulo": "Seu painel de *personal*",
+  "sub": "Convide seus alunos com um link e acompanhe tudo pelo app.",
+  "cta": "Ative o modo personal",
+  "mini": "CREF obrigatório · Android e iPhone"
+ }
+}

@@ -1,0 +1,177 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Inter;src:local('Inter')}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#07070a;font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#fafafa}
+#palco{position:relative;width:1080px;height:1920px;overflow:hidden}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55}
+#grade{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse at center,#000 30%,transparent 75%)}
+#barra{position:absolute;top:28px;left:40px;right:40px;height:8px;border-radius:8px;background:rgba(255,255,255,.15);overflow:hidden;z-index:30}
+#barra i{display:block;height:100%;background:#22c55e;width:0}
+#marca{position:absolute;top:58px;left:40px;display:flex;align-items:center;gap:14px;z-index:30;font-weight:800;font-size:34px;letter-spacing:-.5px}
+#marca b{width:56px;height:56px;border-radius:16px;background:#0f1f14;border:2px solid #22c55e;display:flex;align-items:center;justify-content:center;color:#22c55e;font-size:22px}
+#titulo{position:absolute;top:150px;left:50px;right:50px;text-align:center;z-index:25;font-weight:900;font-size:76px;line-height:1.02;letter-spacing:-2px}
+#titulo span{display:inline-block;margin:0 .12em;will-change:transform}
+#titulo .d{color:#22c55e}
+#celular{position:absolute;left:50%;top:400px;width:640px;height:1300px;margin-left:-320px;border-radius:78px;background:#111114;border:3px solid #2a2a30;box-shadow:0 40px 120px rgba(0,0,0,.7),0 0 0 10px #050506,0 0 80px rgba(34,197,94,.18);z-index:10;will-change:transform}
+#tela{position:absolute;inset:18px;border-radius:62px;overflow:hidden;background:#09090b}
+#tela img{position:absolute;left:0;top:0;width:100%;will-change:transform,opacity}
+#ilha{position:absolute;top:30px;left:50%;width:150px;height:40px;margin-left:-75px;border-radius:24px;background:#000;z-index:5}
+#toque{position:absolute;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:6px solid rgba(255,255,255,.95);background:rgba(34,197,94,.35);opacity:0;z-index:6;pointer-events:none}
+#realce{position:absolute;border:5px solid #22c55e;border-radius:26px;box-shadow:0 0 0 2000px rgba(0,0,0,.45),0 0 40px rgba(34,197,94,.6);opacity:0;z-index:4}
+#legenda{position:absolute;left:60px;right:60px;bottom:150px;z-index:28;text-align:center}
+#legenda p{display:inline;font-weight:800;font-size:50px;line-height:1.28;padding:10px 22px;border-radius:18px;background:rgba(0,0,0,.78);box-decoration-break:clone;-webkit-box-decoration-break:clone}
+#legenda .w{opacity:.35;transition:none}
+#legenda .w.on{opacity:1}
+#legenda .w.k{color:#4ade80}
+.selo{position:absolute;z-index:26;padding:18px 28px;border-radius:999px;font-weight:900;font-size:36px;background:#22c55e;color:#06140b;box-shadow:0 18px 40px rgba(34,197,94,.35);white-space:nowrap;will-change:transform}
+.selo.esc{background:#18181b;color:#fafafa;border:2px solid #3f3f46;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+#fim{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;background:radial-gradient(circle at 50% 40%,#0f2a18,#07070a 70%);opacity:0}
+#fim .logo{width:190px;height:190px;border-radius:52px;border:5px solid #22c55e;background:#0f1f14;color:#22c55e;font-weight:900;font-size:72px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 90px rgba(34,197,94,.45)}
+#fim h2{font-size:92px;font-weight:900;letter-spacing:-2px;text-align:center;line-height:1}
+#fim h3{font-size:46px;font-weight:700;color:#a1a1aa;text-align:center;line-height:1.25;padding:0 80px}
+#fim .cta{margin-top:20px;padding:34px 70px;border-radius:999px;background:#22c55e;color:#06140b;font-weight:900;font-size:56px;box-shadow:0 20px 60px rgba(34,197,94,.45)}
+#fim .url{font-size:44px;font-weight:800;color:#4ade80;letter-spacing:.5px}
+#fim .mini{font-size:32px;color:#71717a;font-weight:600}
+</style></head><body>
+<div id="palco">
+  <div class="blob" id="b1" style="width:900px;height:900px;background:#16a34a"></div>
+  <div class="blob" id="b2" style="width:800px;height:800px;background:#7c3aed"></div>
+  <div class="blob" id="b3" style="width:700px;height:700px;background:#0ea5e9"></div>
+  <div id="grade"></div>
+  <div id="barra"><i></i></div>
+  <div id="marca"><b>R2</b>R2 Fit Pro</div>
+  <div id="titulo"></div>
+  <div id="celular"><div id="tela"><div id="ilha"></div><div id="realce"></div><div id="toque"></div></div></div>
+  <div id="selos"></div>
+  <div id="legenda"></div>
+  <div id="fim"><div class="logo">R2</div><h2 id="fimTitulo"></h2><h3 id="fimSub"></h3><div class="cta" id="fimCta"></div><div class="url">r2fitpro.com.br</div><div class="mini" id="fimMini"></div></div>
+</div>
+<script>
+// Linha do tempo: render(t) desenha o quadro do instante t (segundos). Tudo determinístico (para gravar quadro a quadro).
+const ease = x => x < 0 ? 0 : x > 1 ? 1 : 1 - Math.pow(1 - x, 3)
+const easeIO = x => x < 0 ? 0 : x > 1 ? 1 : x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
+const lerp = (a, b, k) => a + (b - a) * k
+const mola = x => { if (x <= 0) return 0; if (x >= 1) return 1; return 1 - Math.exp(-6 * x) * Math.cos(10 * x) }
+let R = null
+const imgs = {}
+function preparar(roteiro, fontes) {
+  R = roteiro
+  const tela = document.getElementById('tela')
+  for (const [k, src] of Object.entries(fontes)) {
+    const im = new Image(); im.src = src; im.dataset.k = k; im.style.opacity = 0
+    tela.insertBefore(im, document.getElementById('realce')); imgs[k] = im
+  }
+  const selos = document.getElementById('selos')
+  ;(R.selos || []).forEach((s, i) => { const d = document.createElement('div'); d.className = 'selo' + (s.escuro ? ' esc' : ''); d.id = 'selo' + i; d.textContent = s.texto; d.style.left = s.x + 'px'; d.style.top = s.y + 'px'; d.style.opacity = 0; selos.appendChild(d) })
+  document.getElementById('fimTitulo').innerHTML = R.fim.titulo.replace(/\*([^*]+)\*/g, '<span style="color:#22c55e">$1</span>')
+  document.getElementById('fimSub').textContent = R.fim.sub
+  document.getElementById('fimCta').textContent = R.fim.cta
+  document.getElementById('fimMini').textContent = R.fim.mini || 'Android e iPhone · cancele quando quiser'
+  return Promise.all(Object.values(imgs).map(im => im.decode()))
+}
+function textoTitulo(s) {
+  // *palavra* em verde
+  return s.split(' ').map((w, i) => `<span data-i="${i}" class="${/^\*.*\*$/.test(w) ? 'd' : ''}">${w.replace(/\*/g, '')}</span>`).join(' ')
+}
+let tituloAtual = null, legendaAtual = null
+function render(t) {
+  const T = R.duracao
+  document.querySelector('#barra i').style.width = (Math.min(1, t / T) * 100) + '%'
+  // fundo vivo
+  const b = (id, x, y) => { const e = document.getElementById(id); e.style.left = x + 'px'; e.style.top = y + 'px' }
+  b('b1', -300 + 140 * Math.sin(t * .5), -250 + 120 * Math.cos(t * .4))
+  b('b2', 500 + 160 * Math.cos(t * .45), 900 + 140 * Math.sin(t * .35))
+  b('b3', -200 + 120 * Math.sin(t * .3 + 2), 1300 + 100 * Math.cos(t * .5))
+  // celular: entra subindo, flutua de leve
+  const cel = document.getElementById('celular')
+  const ent = mola((t - .1) / 1.1)
+  cel.style.transform = `translateY(${lerp(900, 0, ent) + 10 * Math.sin(t * 1.3)}px) rotate(${lerp(8, 0, ent) + .6 * Math.sin(t * .9)}deg)`
+  // cenas (telas do app)
+  const W = 604, H = 1264 // tamanho da tela dentro do celular
+  for (const im of Object.values(imgs)) im.style.opacity = 0
+  for (const c of R.cenas) {
+    if (t < c.de - .35 || t > c.ate + .35) continue
+    // sequência real (quadros capturados do app): mostra o quadro do instante
+    let chave = c.img
+    if (c.seq) {
+      const ts = Math.max(0, (t - c.de) * (c.seq.vel || 1) + (c.seq.inicio || 0))
+      let i = 0
+      while (i + 1 < c.seq.tempos.length && c.seq.tempos[i + 1] <= ts) i++
+      chave = c.seq.prefixo + String(i).padStart(3, '0')
+    }
+    const im = imgs[chave]
+    const k = (t - c.de) / (c.ate - c.de)
+    const entra = ease((t - c.de + .35) / .35), sai = 1 - ease((t - c.ate) / .35)
+    const op = Math.min(entra, sai)
+    const larg = c.centro ? W * .92 : W
+    im.style.width = larg + 'px'; im.style.left = (c.centro ? W * .04 : 0) + 'px'; im.style.borderRadius = c.centro ? '28px' : '0'
+    im.style.boxShadow = c.centro ? '0 20px 60px rgba(0,0,0,.6)' : 'none'
+    const altura = larg * im.naturalHeight / im.naturalWidth
+    const topo = c.centro ? Math.max(0, (H - altura) / 2) : 0
+    // rolagem (fração do que sobra) e zoom num ponto (frações da tela)
+    const rol = c.rolar ? lerp(c.rolar[0], c.rolar[1], easeIO((k - (c.rolarDe || 0)) / ((c.rolarAte || 1) - (c.rolarDe || 0)))) : 0
+    const y = -Math.max(0, altura - H) * rol
+    let s = 1, ox = .5, oy = .5
+    if (c.zoom) { const z = easeIO((k - c.zoom.de) / (c.zoom.ate - c.zoom.de)); s = lerp(1, c.zoom.escala, z); ox = c.zoom.x; oy = c.zoom.y }
+    const desl = c.entrada === 'lado' ? lerp(W, 0, entra) * (t < c.de ? 1 : 1) - (t > c.ate ? lerp(0, W, 1 - sai) : 0) : 0
+    im.style.opacity = c.entrada === 'lado' ? 1 * (t >= c.de - .35 && t <= c.ate + .35 ? 1 : 0) : op
+    im.style.transformOrigin = `${ox * W}px ${(oy * H) - y}px`
+    im.style.transform = `translate(${desl}px, ${y + topo}px) scale(${s})`
+    im.style.zIndex = Math.round(c.de * 10)
+    // toque e realce (coordenadas em fração da área visível)
+    const toque = document.getElementById('toque')
+    for (const tq of (c.toques || [])) {
+      const d = t - tq.t
+      if (d >= -.05 && d < .7) {
+        toque.style.left = (tq.x * W) + 'px'; toque.style.top = (tq.y * H) + 'px'
+        toque.style.opacity = d < 0 ? 0 : 1 - ease(d / .7)
+        toque.style.transform = `scale(${lerp(.4, 1.5, ease(d / .7))})`
+      }
+    }
+    const re = document.getElementById('realce')
+    if (c.realce && t >= c.realce.de && t <= c.realce.ate) {
+      const a = ease((t - c.realce.de) / .3) * (1 - ease((t - c.realce.ate + .3) / .3))
+      Object.assign(re.style, { left: c.realce.x * W + 'px', top: c.realce.y * H + 'px', width: c.realce.w * W + 'px', height: c.realce.h * H + 'px', opacity: a })
+    }
+  }
+  if (!R.cenas.some(c => c.realce && t >= c.realce.de && t <= c.realce.ate)) document.getElementById('realce').style.opacity = 0
+  if (!R.cenas.some(c => (c.toques || []).some(tq => t - tq.t >= -.05 && t - tq.t < .7))) document.getElementById('toque').style.opacity = 0
+  // título por cena (palavras entram uma a uma)
+  const tit = document.getElementById('titulo')
+  const ti = R.titulos.find(x => t >= x.de && t < x.ate)
+  if (ti !== tituloAtual) { tituloAtual = ti; tit.innerHTML = ti ? textoTitulo(ti.texto) : '' }
+  if (ti) tit.querySelectorAll('span').forEach((sp, i) => {
+    const k = mola((t - ti.de - i * .09) / .55), saida = ease((t - (ti.ate - .3)) / .3)
+    sp.style.transform = `translateY(${lerp(60, 0, k) - saida * 40}px) scale(${lerp(.6, 1, k)})`
+    sp.style.opacity = Math.min(ease((t - ti.de - i * .09) / .25), 1 - saida)
+  })
+  // legenda (karaokê: a palavra falada acende)
+  const lg = document.getElementById('legenda')
+  const le = R.legendas.find(x => t >= x.de && t < x.ate)
+  if (le !== legendaAtual) { legendaAtual = le; lg.innerHTML = le ? '<p>' + le.texto.split(' ').map(w => `<span class="w${/^\*.*\*$/.test(w) ? ' k' : ''}">${w.replace(/\*/g, '')}</span>`).join(' ') + '</p>' : '' }
+  if (le) {
+    const ws = lg.querySelectorAll('.w'), dur = (le.ate - le.de) * .8
+    ws.forEach((w, i) => w.classList.toggle('on', t - le.de >= (i / ws.length) * dur))
+    lg.style.opacity = Math.min(ease((t - le.de) / .2), 1 - ease((t - le.ate + .2) / .2))
+    lg.style.transform = `translateY(${lerp(30, 0, ease((t - le.de) / .25))}px)`
+  }
+  // selos
+  ;(R.selos || []).forEach((s, i) => {
+    const e = document.getElementById('selo' + i)
+    const k = mola((t - s.de) / .6), saida = ease((t - (s.ate - .3)) / .3)
+    e.style.opacity = t < s.de ? 0 : Math.min(1, 1 - saida)
+    e.style.transform = `scale(${lerp(.3, 1, k) * (1 + .03 * Math.sin(t * 6))}) rotate(${s.giro || 0}deg)`
+  })
+  // tela final
+  const fim = document.getElementById('fim')
+  const kf = ease((t - R.fim.de) / .45)
+  fim.style.opacity = kf
+  fim.querySelectorAll(':scope > *').forEach((e, i) => {
+    const k = mola((t - R.fim.de - .15 - i * .12) / .6)
+    e.style.transform = `translateY(${lerp(80, 0, k)}px) scale(${e.classList.contains('cta') ? 1 + .04 * Math.sin((t - R.fim.de) * 5) : 1})`
+    e.style.opacity = Math.max(0, Math.min(1, (t - R.fim.de - .15 - i * .12) / .25))
+  })
+}
+window.preparar = preparar; window.render = render
+</script></body></html>
