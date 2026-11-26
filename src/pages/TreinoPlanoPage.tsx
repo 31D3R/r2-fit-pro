@@ -6,6 +6,8 @@ import { descreverGrupos, proximoTreino } from '../lib/treinoModel'
 import { exercicioConcluido, seriesFeitas, type Sessao } from '../lib/sessoes'
 import { Spinner } from '../components/UI'
 import EnviarParaAluno from '../components/acompanhamento/EnviarParaAluno'
+import FaixaPlanoAluno from '../components/acompanhamento/FaixaPlanoAluno'
+import { useDonoDoPlano } from '../lib/planoDoAluno'
 import EditorDiasSemana from '../components/treino/EditorDiasSemana'
 import { ajustesDaSemana, aplicarSemana, dataComDia, desfazerAjuste, hojeIso } from '../lib/semanaBase'
 import { entregarArquivo } from '../lib/nativo'
@@ -16,6 +18,8 @@ export default function TreinoPlanoPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const { treino, loading, erro, salvar } = useTreino(id)
+  // aberto pelo personal: o treino é de um aluno (as mudanças valem direto para ele)
+  const dono = useDonoDoPlano(treino?.user_id)
   const [editandoDias, setEditandoDias] = useState(false)
   const [salvandoDias, setSalvandoDias] = useState(false)
   const [erroDias, setErroDias] = useState('')
@@ -45,8 +49,8 @@ export default function TreinoPlanoPage() {
 
   // "Iniciar" na lista de planos abre direto o próximo treino da sequência
   useEffect(() => {
-    if (params.get('iniciar') && treino && carregouSessoes) navigate(`/treino/${treino.id}/dia/${proximo}`, { replace: true })
-  }, [params, treino, carregouSessoes, proximo, navigate])
+    if (params.get('iniciar') && treino && carregouSessoes && !dono.deAluno) navigate(`/treino/${treino.id}/dia/${proximo}`, { replace: true })
+  }, [params, treino, carregouSessoes, proximo, navigate, dono.deAluno])
 
   const excluir = async () => {
     if (!treino || !(await confirmar(`Excluir o plano "${treino.nome}"?`, { ok: 'Excluir' }))) return
@@ -63,27 +67,30 @@ export default function TreinoPlanoPage() {
   return (
     <div className="flex flex-col gap-5" translate="no">
       <div className="flex items-start gap-3">
-        <button onClick={() => navigate('/treino')} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
+        <button onClick={() => navigate(dono.alunoId ? `/alunos/${dono.alunoId}` : '/treino')} className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar">←</button>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-zinc-100 leading-tight">{plano.nome}</h1>
           <p className="text-sm text-zinc-500 mt-0.5">
-            {treino.enviado_por ? 'Enviado pelo seu personal' : plano.origem === 'manual' ? 'Montado por você' : 'Gerado por IA'} · Treino {plano.divisao} · {plano.frequencia_semanal}x/semana
+            {dono.deAluno ? `Treino de ${dono.nome || 'seu aluno'}` : treino.enviado_por ? 'Enviado pelo seu personal' : plano.origem === 'manual' ? 'Montado por você' : 'Gerado por IA'} · Treino {plano.divisao} · {plano.frequencia_semanal}x/semana
           </p>
         </div>
       </div>
 
       <EnviarParaAluno treinoId={treino.id} />
+      <FaixaPlanoAluno dono={dono} oque="treino" />
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className={`grid gap-2 ${dono.deAluno ? 'grid-cols-2' : 'grid-cols-3'}`}>
         <button type="button" onClick={() => import('../lib/pdfConteudo').then(m => entregarArquivo(m.pdfTreino(plano), 'treino-r2-fit-pro.pdf', 'Treino em PDF'))
           .then(r => r === 'sem_suporte' && setErroDias('Atualize o app para salvar o PDF.')).catch(() => setErroDias('Não foi possível gerar o PDF.'))}
           className="text-sm font-semibold py-2.5 rounded-xl bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700">PDF</button>
         <Link to={`/treino/${treino.id}/editar`} className="text-center text-sm font-semibold py-2.5 rounded-xl bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700">
           Editar plano
         </Link>
-        <button onClick={excluir} className="text-sm font-semibold py-2.5 rounded-xl bg-zinc-900 text-red-400/90 border border-zinc-800 hover:bg-red-500/10">
-          Excluir
-        </button>
+        {!dono.deAluno && (
+          <button onClick={excluir} className="text-sm font-semibold py-2.5 rounded-xl bg-zinc-900 text-red-400/90 border border-zinc-800 hover:bg-red-500/10">
+            Excluir
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-1.5">
