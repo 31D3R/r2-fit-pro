@@ -18,6 +18,8 @@ import { cartaoTreino } from '../lib/cartoesBase'
 import { useContadorTreino } from '../components/treino/ContadorTreino'
 import { ExecucaoAmpliada, MiniExecucao, animacaoDe } from '../components/treino/ExecucaoAnimada'
 import { confirmar } from '../components/Confirmacao'
+import FaixaPlanoAluno from '../components/acompanhamento/FaixaPlanoAluno'
+import { useDonoDoPlano } from '../lib/planoDoAluno'
 
 /** Chave deslizante "Concluído". */
 function ChaveConcluido({ ligado, ocupado, onTrocar }: { ligado: boolean; ocupado: boolean; onTrocar: () => void }) {
@@ -39,6 +41,8 @@ export default function TreinoDiaPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { treino, loading, salvar } = useTreino(id)
+  // aberto pelo personal: edita o treino do aluno (sem contador, sem marcar feito: isso é do aluno)
+  const dono = useDonoDoPlano(treino?.user_id)
   const [sessao, setSessao] = useState<Sessao | null>(null)
   const [picker, setPicker] = useState(false)
   const [aviso, setAviso] = useState('')
@@ -143,9 +147,11 @@ export default function TreinoDiaPage() {
         </div>
       </div>
 
-      {user && <CartaoRotinaTreino userId={user.id} momento="antes" />}
+      <FaixaPlanoAluno dono={dono} oque="treino" />
 
-      {exercicios.length > 0 && (
+      {user && !dono.deAluno && <CartaoRotinaTreino userId={user.id} momento="antes" />}
+
+      {exercicios.length > 0 && !dono.deAluno && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-3.5 py-3">
           <div className="flex items-center gap-2 text-xs">
             <span className="text-zinc-400 shrink-0">{sessaoFinalizada ? 'Concluído 🎉' : 'Progresso'}</span>
@@ -177,7 +183,7 @@ export default function TreinoDiaPage() {
         </div>
       )}
 
-      {exercicios.length > 0 && contador.opcoesSom}
+      {exercicios.length > 0 && !dono.deAluno && contador.opcoesSom}
 
       {aviso && <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm text-red-400">{aviso}</div>}
 
@@ -212,17 +218,17 @@ export default function TreinoDiaPage() {
                       <button onClick={() => setExecucao(x => (x === ex.id ? null : ex.id))} aria-label={`Como fazer ${ex.nome}`}
                         className="w-8 h-8 shrink-0 rounded-lg bg-zinc-800 text-zinc-400 border border-zinc-700 text-sm">ⓘ</button>
                     ))}
-                  {contador.ligado && (
+                  {contador.ligado && !dono.deAluno && (
                     <button onClick={() => contador.iniciar([ex])} disabled={contador.preparando} aria-label={ok ? 'Refazer' : 'Iniciar'}
                       className={`w-9 h-8 shrink-0 rounded-lg text-sm font-bold transition active:scale-95 disabled:opacity-60 ${ok ? 'bg-zinc-800 text-zinc-200 border border-zinc-700' : 'bg-green-500 text-zinc-950 hover:bg-green-400'}`}>
                       ▶
                     </button>
                   )}
-                  <ChaveConcluido ligado={ok} ocupado={marcando === ex.id} onTrocar={() => alternarConcluido(ex)} />
+                  {!dono.deAluno && <ChaveConcluido ligado={ok} ocupado={marcando === ex.id} onTrocar={() => alternarConcluido(ex)} />}
                   <button onClick={() => setMenu(m => (m === ex.id ? null : ex.id))} aria-label="Mais opções" aria-expanded={menu === ex.id}
                     className={`relative w-7 h-8 shrink-0 rounded-md text-lg leading-none after:absolute after:-inset-x-1 after:-inset-y-2 after:content-[''] ${menu === ex.id ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-500'}`}>⋯</button>
                 </div>
-                {historico && <LinhaCarga ex={ex} pontos={historico.get(chaveExercicio(ex))} hoje={hoje}
+                {historico && !dono.deAluno && <LinhaCarga ex={ex} pontos={historico.get(chaveExercicio(ex))} hoje={hoje}
                   onAplicar={carga => atualizarExercicios(l => l.map(x => (x.id === ex.id ? { ...x, carga } : x)))}
                   onAbrir={() => setEvolucao(ex.id)} />}
                 {menu === ex.id && (

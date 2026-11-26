@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Users, ChevronRight, ChevronLeft, MessageCircle, AlertTriangle, Dumbbell, Flame, Scale, Send, Copy, Salad, Target, UserPlus, BarChart3, Utensils,
+  Pencil,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -211,6 +212,13 @@ function Treinos({ d, userId, semana, aoMudar }: { d: DadosAluno; userId: string
   const [erro, setErro] = useState('')
   const [aviso, setAviso] = useState('')
 
+  // dietas do aluno (o personal vê e edita direto quando o aluno permitiu editar os planos)
+  const [dietasAluno, setDietasAluno] = useState<{ id: string; nome: string; calorias_dia: number | null; enviado_por: string | null }[] | null>(null)
+  useEffect(() => {
+    if (!d.editar_planos) { setDietasAluno(null); return }
+    supabase.from('dietas').select('id, nome, calorias_dia, enviado_por').eq('user_id', d.aluno_id).order('created_at', { ascending: false })
+      .then(r => setDietasAluno(r.error ? null : ((r.data as { id: string; nome: string; calorias_dia: number | null; enviado_por: string | null }[]) ?? [])))
+  }, [d.aluno_id, d.editar_planos])
   useEffect(() => {
     supabase.from('treinos').select('id, nome').eq('user_id', userId).order('created_at', { ascending: false }).then(r => setMeus((r.data as { id: string; nome: string }[]) ?? []))
     supabase.from('dietas').select('id, nome').eq('user_id', userId).order('created_at', { ascending: false }).then(r => setMinhasDietas((r.data as { id: string; nome: string }[]) ?? []))
@@ -249,12 +257,36 @@ function Treinos({ d, userId, semana, aoMudar }: { d: DadosAluno; userId: string
                 <p className="text-sm font-medium text-zinc-100 truncate">{t.nome}</p>
                 <p className="text-xs text-zinc-500">{[t.frequencia_semanal ? `${t.frequencia_semanal}x/semana` : null, t.enviado_por_mim ? 'enviado por você' : null].filter(Boolean).join(' · ') || ' '}</p>
               </div>
-              <Button size="sm" variant="secondary" loading={ocupado === `copiar-${t.id}`} onClick={() => copiar(t.id)} title="Copia para a sua conta para editar e reenviar">
-                <Copy className="w-3.5 h-3.5" />Editar
-              </Button>
+              {d.editar_planos ? (
+                <Button size="sm" onClick={() => navigate(`/treino/${t.id}`)} title="Edita o treino do aluno: muda na hora para ele">
+                  <Pencil className="w-3.5 h-3.5" />Editar
+                </Button>
+              ) : (
+                <Button size="sm" variant="secondary" onClick={() => navigate(`/treino/${t.id}`)}>Ver</Button>
+              )}
+              <button type="button" onClick={() => copiar(t.id)} disabled={ocupado === `copiar-${t.id}`} aria-label={`Copiar ${t.nome} para a sua conta`}
+                title="Copiar para a sua conta (para usar com outros alunos)" className="p-2 rounded-lg text-zinc-400 hover:bg-zinc-800 disabled:opacity-50"><Copy className="w-4 h-4" /></button>
             </div>
           ))}
-          <p className="text-xs text-zinc-500">"Editar" faz uma cópia na sua conta. Ajuste no editor de sempre e toque em "Enviar para o aluno".</p>
+          <p className="text-xs text-zinc-500">{d.editar_planos
+            ? '"Editar" muda o treino do próprio aluno: exercícios, séries, cargas, descanso e dias da semana. Ele vê na hora e recebe um aviso.'
+            : 'O aluno não permitiu editar os planos. Você pode ver os treinos ou copiar para a sua conta.'}</p>
+        </section>
+      )}
+      {d.editar_planos && dietasAluno && (
+        <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col gap-2">
+          <p className="text-sm font-semibold text-zinc-200">Dietas do aluno</p>
+          {dietasAluno.length === 0 ? <p className="text-sm text-zinc-500">Nenhuma dieta salva.</p> : dietasAluno.map(t => (
+            <div key={t.id} className="flex items-center gap-3 rounded-xl bg-zinc-950/60 border border-zinc-800 px-3 py-2.5">
+              <Salad className="w-4 h-4 text-green-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-zinc-100 truncate">{t.nome}</p>
+                <p className="text-xs text-zinc-500">{[t.calorias_dia ? `${fmt(t.calorias_dia)} kcal/dia` : null, t.enviado_por === userId ? 'enviada por você' : null].filter(Boolean).join(' · ') || ' '}</p>
+              </div>
+              <Button size="sm" onClick={() => navigate(`/dieta/${t.id}`)} title="Edita a dieta do aluno: muda na hora para ele"><Pencil className="w-3.5 h-3.5" />Editar</Button>
+            </div>
+          ))}
+          <p className="text-xs text-zinc-500">"Editar" muda a dieta do próprio aluno (refeições, alimentos, quantidades ou um ajuste pela IA). A meta de calorias e macros fica em Resumo → Ajustar.</p>
         </section>
       )}
       {d.editar_planos ? (

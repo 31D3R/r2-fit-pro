@@ -11,6 +11,8 @@ import { Button, Input, Select, Textarea, Card, Badge, Spinner } from '../compon
 import { entregarArquivo } from '../lib/nativo'
 import { useRefeicoesFeitas } from '../lib/dietaDiario'
 import { avisar, confirmar } from '../components/Confirmacao'
+import FaixaPlanoAluno from '../components/acompanhamento/FaixaPlanoAluno'
+import { useDonoDoPlano } from '../lib/planoDoAluno'
 
 function DietMenu({ onSelect }: { onSelect: (v: 'nova' | 'contador') => void }) {
   const { user } = useAuth()
@@ -198,7 +200,9 @@ function DietDetail({ id }: { id: string }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [dieta, setDieta] = useState<Dieta | null>(null)
-  const refeicoesFeitas = useRefeicoesFeitas(user?.id, id, dieta?.plano ?? null)
+  // aberta pelo personal: a dieta é de um aluno (editar vale direto para ele; "marcar como feito" é só do aluno)
+  const dono = useDonoDoPlano(dieta?.user_id)
+  const refeicoesFeitas = useRefeicoesFeitas(dono.deAluno ? undefined : user?.id, id, dieta?.plano ?? null)
   const [loading, setLoading] = useState(true)
   const [rascunho, setRascunho] = useState<{ nome: string; plano: PlanoAlimentar } | null>(null)
   const [pedidoIA, setPedidoIA] = useState('')
@@ -243,7 +247,7 @@ function DietDetail({ id }: { id: string }) {
     try {
       const novo = await ajustarDieta(plano as PlanoAlimentar, pedidoIA.trim())
       await gravar(novo.nome || dieta.nome, novo)
-      setPedidoIA(''); setAviso('Pronto! A IA ajustou seu plano.')
+      setPedidoIA(''); setAviso(dono.deAluno ? 'Pronto! A IA ajustou a dieta do aluno.' : 'Pronto! A IA ajustou seu plano.')
     } catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível ajustar') }
     finally { setAjustando(false) }
   }
@@ -255,6 +259,7 @@ function DietDetail({ id }: { id: string }) {
           <button onClick={() => setRascunho(null)} className="text-zinc-400 p-1.5 -ml-1.5 rounded-lg hover:bg-zinc-800" aria-label="Cancelar edição">←</button>
           <div className="flex-1 min-w-0"><h1 className="text-xl font-bold text-zinc-100">Editar plano</h1><p className="text-sm text-zinc-500">Toque numa refeição para mudar alimentos e quantidades</p></div>
         </div>
+        <FaixaPlanoAluno dono={dono} oque="dieta" />
         <EditorDieta plano={rascunho.plano} onChange={p => setRascunho(r => r && { ...r, plano: p })} nome={rascunho.nome} onNome={n => setRascunho(r => r && { ...r, nome: n })} />
         {erro && <p className="text-sm text-red-400">{erro}</p>}
         <div className="sticky bottom-24 flex gap-2 bg-zinc-950/90 backdrop-blur py-2">
@@ -272,15 +277,16 @@ function DietDetail({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-5" translate="no">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/dieta')} className="text-zinc-400 p-1.5 -ml-1.5 rounded-lg hover:bg-zinc-800">←</button>
+        <button onClick={() => navigate(dono.alunoId ? `/alunos/${dono.alunoId}` : '/dieta')} aria-label="Voltar" className="text-zinc-400 p-1.5 -ml-1.5 rounded-lg hover:bg-zinc-800">←</button>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-zinc-100 truncate">{dieta.nome}</h1>
           <p className="text-sm text-zinc-500">{new Date(dieta.created_at).toLocaleDateString('pt-BR', { dateStyle: 'long' })}</p>
         </div>
         <button onClick={() => { setAviso(''); setRascunho({ nome: dieta.nome, plano: recalcularDieta({ ...(plano as PlanoAlimentar), refeicoes: plano.refeicoes ?? [] }) }) }}
           className="flex items-center gap-1.5 text-sm font-semibold text-green-400 px-3 py-1.5 rounded-lg border border-green-500/30 hover:bg-green-500/10"><Pencil className="w-4 h-4" />Editar</button>
-        <button onClick={del} aria-label="Excluir plano" className="text-red-500/60 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10">🗑</button>
+        {!dono.deAluno && <button onClick={del} aria-label="Excluir plano" className="text-red-500/60 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10">🗑</button>}
       </div>
+      <FaixaPlanoAluno dono={dono} oque="dieta" />
       {aviso && <p role="status" className="text-sm text-green-400 bg-green-500/10 border border-green-500/20 rounded-xl px-3 py-2">{aviso}</p>}
       <div className="grid grid-cols-2 gap-2">
         <Link to={`/dieta/${dieta.id}/compras`} className="text-center text-sm font-semibold py-2.5 rounded-xl bg-zinc-800 text-zinc-200 border border-zinc-700">🛒 Lista de compras</Link>
@@ -321,7 +327,7 @@ function DietDetail({ id }: { id: string }) {
                 <div className="flex items-center gap-2 text-xs text-zinc-500"><span>{a.quantidade}</span><span className="text-zinc-600">·</span><span>{a.calorias}kcal</span></div>
               </div>
             ))}</div>
-            {(() => {
+            {!dono.deAluno && (() => {
               const feita = refeicoesFeitas.feitas.has(i)
               return (
                 <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800">

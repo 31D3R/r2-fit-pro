@@ -12,6 +12,8 @@ import {
 import { Spinner } from '../components/UI'
 import { Chip, Rotulo } from '../components/treino/Chip'
 import { confirmar } from '../components/Confirmacao'
+import FaixaPlanoAluno from '../components/acompanhamento/FaixaPlanoAluno'
+import { useDonoDoPlano } from '../lib/planoDoAluno'
 
 const GRUPO_IDS = Object.keys(GRUPOS) as GrupoMuscular[]
 
@@ -20,6 +22,7 @@ export default function PlanoWizardPage() {
   const [params] = useSearchParams()
   const editando = !!id
   const { treino, loading: carregando, salvar } = useTreino(id)
+  const dono = useDonoDoPlano(treino?.user_id)
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -156,6 +159,7 @@ export default function PlanoWizardPage() {
           <p className="text-sm text-zinc-500">Etapa {etapa + 1} de 2 · {etapa === 0 ? 'Configuração' : 'Divisão dos treinos'}</p>
         </div>
       </div>
+      <FaixaPlanoAluno dono={dono} oque="treino" />
       <div className="grid grid-cols-2 gap-1.5">
         {[0, 1].map(i => <div key={i} className={`h-1 rounded-full ${i <= etapa ? 'bg-green-500' : 'bg-zinc-800'}`} />)}
       </div>
