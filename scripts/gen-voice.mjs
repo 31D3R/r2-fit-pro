@@ -27,7 +27,7 @@ const MODELO = 'gpt-4o-mini-tts'
 const VOZ = 'coral'
 const DIR = new URL('../public/audio/', import.meta.url)
 const DIR_NOMES = new URL('nomes/', DIR)
-const key = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY
+const key = process.env.OPENAI_API_KEY
 const args = new Set(process.argv.slice(2))
 const refazer = args.has('--refazer')
 

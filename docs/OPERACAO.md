@@ -4,8 +4,8 @@
 
 | Camada | Tecnologia | Onde |
 |---|---|---|
-| Frontend | React 19 + Vite 6 + Tailwind 4 | Vercel (`prj_tfPw3HACgrbAYglRlsfpShVKKrH0`) |
-| IA (proxy seguro) | Vercel Function `api/ai.js` | Vercel — usa `OPENAI_API_KEY` (ou `VITE_OPENAI_API_KEY`) só no servidor |
+| Frontend | React 19 + Vite 6 + Tailwind 4 | Vercel (projeto `r2-fit-pro`, `prj_6VNDH39CawkkPGMkGbTHAekMTT98`, time `elderconradt-4559s-projects`; Git ligado a `31D3R/r2-fit-pro`, push na `main` publica sozinho) |
+| IA (proxy seguro) | Vercel Function `api/ai.js` | Vercel — usa `OPENAI_API_KEY` só no servidor |
 | Banco, Auth, Storage | Supabase (`pzmhlxhdqghamyxgegwq`, us-east-1) | RLS em todas as tabelas |
 | Cobrança, webhook, conta | Supabase Edge Function `r2-api` | `/functions/v1/r2-api/{billing,conta,webhook/asaas,webhook/mercadopago,saude}` |
 | Pagamentos | **Asaas** (desde 31/10/2026): assinatura no cartão e avulso por Pix/boleto/cartão. Mercado Pago só para assinaturas antigas | BRL |
@@ -167,7 +167,7 @@ Em `supabase/migrations/` (aplicadas em produção em 22/10/2026 via MCP, sem pe
 - Logs: Supabase → Edge Functions → r2-api → Logs (logs estruturados sem tokens); Vercel → Logs (função `/api/ai`).
 - Webhook com erro retorna 500 e o Mercado Pago reenvia; reprocessamento é idempotente. Além disso, com pagamento pendente o app reconsulta o Mercado Pago sozinho ao abrir e ao voltar para a aba. Avisos de recursos que não existem no Mercado Pago (ex.: cobrança de validação de cartão recusada) são marcados como ignorados.
 - Backups: plano Pro do Supabase inclui backups diários (recomendado PITR para produção). Plano gratuito não tem backup automático — **contratar antes do lançamento** ou agendar `pg_dump`.
-- Publicação: `npm run build` → deploy Vercel; Edge Function via `supabase functions deploy r2-api --no-verify-jwt`.
+- Publicação: merge na `main` (a Vercel publica sozinha pelo Git); Edge Function via `supabase functions deploy r2-api --no-verify-jwt`.
 
 ## Tabela de alimentos (TACO)
 
@@ -308,11 +308,29 @@ observação; marca "feito" e a próxima vira hoje + intervalo (`src/lib/rotinaB
 - `r2-api` (a publicar com o CLI): avisos de pagamento recusados gravam campos curtos e no máximo 30 por 10 min; notificações
   só para serviços de push conhecidos e inscrição de outra conta exige a mesma chave; cancelamento com estorno trava
   contra dois pedidos ao mesmo tempo; estorno automático por arrependimento uma vez por pessoa (depois vai para a equipe);
-  exclusão de conta apaga fotos página por página; CORS só para prévias do time `rivaldo1`.
+  exclusão de conta apaga fotos página por página; CORS só para prévias do time `elderconradt-4559s-projects`.
 - App Android (a gerar na 1.9.3, código 14): `allowNavigation` com domínios exatos, caminho recebido por outro app
   conferido, `allowBackup=false`.
 - Pendências do dono: ligar "Leaked password protection" no Supabase (Authentication); apagar a variável
   `VITE_OPENAI_API_KEY` na Vercel (o servidor usa `OPENAI_API_KEY`).
+
+### Auditoria de segurança (26/11/2026, depois da migração para as contas novas)
+- Contas: GitHub `31D3R/r2-fit-pro`; Vercel `prj_6VNDH39CawkkPGMkGbTHAekMTT98` (time `elderconradt-4559s-projects`, Git ligado:
+  push na `main` publica); Supabase org "R2 Fit Pro" (Pro) com `r2-fit-pro` e `dj-r2-atendimento`.
+- Supabase `r2-fit-pro`: RLS em todas as tabelas, políticas só do dono ou admin, funções `SECURITY DEFINER` com
+  `search_path` vazio e sem execução para `anon`; funções `admin_*` conferem admin; buckets privados com limite de tamanho
+  e tipo. O aviso "Signed-In Users Can Execute SECURITY DEFINER" é esperado (as RPCs do app conferem `auth.uid()`).
+- Dependências: `react-router-dom` 7.18 (corrige o redirecionamento com barra invertida); `bun.lock` refeito a partir do
+  `package.json` (o antigo era do modelo inicial e listava pacotes que o app não usa). `bun audit`: nenhuma vulnerabilidade.
+- Histórico do Git varrido atrás de chaves (OpenAI, Supabase, Asaas, Mercado Pago, Resend, GitHub, Google, chaves privadas,
+  senhas do APK): nada encontrado.
+- `vercel.json`: + `Cross-Origin-Opener-Policy: same-origin-allow-popups`.
+- `scripts/gen-voice.mjs` não lê mais `VITE_OPENAI_API_KEY`. A variável não existe no projeto novo da Vercel.
+- CORS da `r2-api` (no próximo deploy): prévias do time novo da Vercel e `r2-fit-pro-sigma.vercel.app`.
+- Atenção: o botão "Atualizar agora" do app Android baixa de `https://r2-fit-pro.vercel.app/baixar/`, que ainda é o
+  projeto ANTIGO da Vercel (conta antiga). Não apague o projeto antigo antes de trocar `BASE_DOWNLOAD`
+  (`src/components/AvisoAtualizacaoApp.tsx`) para um endereço do projeto novo que fique fora do app (não pode ser
+  `r2fitpro.com.br` nem `www`, que abrem dentro do app).
 
 ## Ideias anotadas para fazer depois
 

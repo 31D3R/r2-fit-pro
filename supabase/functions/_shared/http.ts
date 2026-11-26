@@ -1,11 +1,11 @@
 // Utilitários HTTP das Edge Functions.
-const ORIGENS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://r2fitpro.com.br,https://www.r2fitpro.com.br,https://r2-fit-pro.vercel.app,http://localhost:5173,http://localhost:4173')
+const ORIGENS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://r2fitpro.com.br,https://www.r2fitpro.com.br,https://r2-fit-pro-sigma.vercel.app,http://localhost:5173,http://localhost:4173')
   .split(',').map(o => o.trim()).filter(Boolean)
 
 export function corsHeaders(req: Request): Record<string, string> {
   const origem = req.headers.get('origin') ?? ''
-  // prévias da Vercel só do nosso time (rivaldo1): outro projeto chamado r2-fit-* não entra
-  const permitida = ORIGENS.includes(origem) || /^https:\/\/r2-fit-[a-z0-9-]+-rivaldo1\.vercel\.app$/.test(origem)
+  // prévias da Vercel só do nosso time (elderconradt-4559s-projects): outro projeto chamado r2-fit-* não entra
+  const permitida = ORIGENS.includes(origem) || /^https:\/\/r2-fit-[a-z0-9-]+-elderconradt-4559s-projects\.vercel\.app$/.test(origem)
   return {
     'Access-Control-Allow-Origin': permitida ? origem : ORIGENS[0],
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
