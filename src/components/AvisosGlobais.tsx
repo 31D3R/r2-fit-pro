@@ -19,8 +19,20 @@ export default function AvisosGlobais() {
       const cfg = await carregarConfig().catch(() => null)
       if (!cfg || !vivo) return
       setAviso(cfg.textos.aviso_global)
-      const { data } = await supabase.from('profiles').select('versao_termos').eq('id', user.id).single()
-      if (vivo && data && data.versao_termos !== cfg.textos.versao_termos) setVersaoPendente(cfg.textos.versao_termos)
+      const { data } = await supabase.from('profiles').select('nome, versao_termos').eq('id', user.id).single()
+      if (!vivo || !data) return
+      // Conta nova criada com "Continuar com o Google": o aceite foi dado na tela de login
+      // ("Ao continuar com o Google, você aceita os Termos...") e o nome vem do Google em vez do início do e-mail.
+      const provedores = (user.app_metadata?.providers as string[] | undefined) ?? [user.app_metadata?.provider]
+      if (data.versao_termos == null && provedores.includes('google')) {
+        const nomeGoogle = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? '').trim().slice(0, 120)
+        const nomePadrao = (user.email ?? '').split('@')[0]
+        const mudar: { versao_termos: string; nome?: string } = { versao_termos: cfg.textos.versao_termos }
+        if (nomeGoogle.length >= 2 && (!data.nome || data.nome === nomePadrao)) mudar.nome = nomeGoogle
+        const { error } = await supabase.from('profiles').update(mudar).eq('id', user.id)
+        if (!error) return
+      }
+      if (vivo && data.versao_termos !== cfg.textos.versao_termos) setVersaoPendente(cfg.textos.versao_termos)
     })()
     return () => { vivo = false }
   }, [user])

@@ -45,6 +45,7 @@ import { ListaAlunos, PainelAluno } from './pages/AlunosPage'
 import { Spinner } from './components/UI'
 import WelcomeSplash from './components/WelcomeSplash'
 import { contadorNativo, ehAppNativo, escutarVoltar } from './lib/nativo'
+import { escutarRetornoGoogle } from './lib/loginGoogle'
 import { caminhoInterno } from './lib/caminhoSeguro'
 import AvisoAtualizacaoApp from './components/AvisoAtualizacaoApp'
 
@@ -143,6 +144,7 @@ function SincronizarApp() {
     if (!ehAppNativo()) return
     ;(window as unknown as { __r2Navegar?: (u: string) => void }).__r2Navegar = (u: string) => { const c = caminhoInterno(u); if (c) navRef.current(c) }
     escutarVoltar()
+    escutarRetornoGoogle() // volta do login do Google (aberto no navegador do celular)
     // site acabou de abrir: um contador nativo que ficou tocando de antes (app recarregado) não tem mais quem o pare
     const c = contadorNativo()
     if (c && typeof c.parar === 'function') Promise.resolve().then(() => c.parar({ liberarTela: true })).catch(() => {})
