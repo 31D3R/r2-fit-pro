@@ -48,6 +48,7 @@ import { contadorNativo, ehAppNativo, escutarVoltar } from './lib/nativo'
 import { escutarRetornoGoogle } from './lib/loginGoogle'
 import { caminhoInterno } from './lib/caminhoSeguro'
 import AvisoAtualizacaoApp from './components/AvisoAtualizacaoApp'
+import ConviteNoCelular from './components/ConviteNoCelular'
 
 function Inicio() {
   const { user, loading } = useAuth()
@@ -92,9 +93,9 @@ function AppRoutes() {
       <Route path="/meta" element={<RotaPrivada><MetaPage /></RotaPrivada>} />
       <Route path="/pagamentos" element={<RotaPrivada><PagamentosPage /></RotaPrivada>} />
       <Route path="/personal" element={<RotaPrivada><PersonalPage /></RotaPrivada>} />
-      <Route path="/convite/:codigo" element={<RotaPrivada><PersonalPage /></RotaPrivada>} />
+      <Route path="/convite/:codigo" element={<ConviteNoCelular tipo="convite"><RotaPrivada><PersonalPage /></RotaPrivada></ConviteNoCelular>} />
       <Route path="/amigos" element={<RotaPrivada><AmigosPage /></RotaPrivada>} />
-      <Route path="/amigo/:codigo" element={<RotaPrivada><AmigosPage /></RotaPrivada>} />
+      <Route path="/amigo/:codigo" element={<ConviteNoCelular tipo="amigo"><RotaPrivada><AmigosPage /></RotaPrivada></ConviteNoCelular>} />
 
       {/* Premium */}
       <Route path="/dieta" element={<RotaPremium recurso="O plano alimentar"><DietPage /></RotaPremium>} />

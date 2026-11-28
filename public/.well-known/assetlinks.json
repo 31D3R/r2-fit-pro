@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.r2fitpro.app",
+      "sha256_cert_fingerprints": ["42:37:E9:B5:12:3A:FA:8B:07:67:07:35:AD:0D:25:0B:2D:C6:59:90:4A:34:46:F1:A1:80:39:DA:F8:A7:3C:7B"]
+    }
+  }
+]

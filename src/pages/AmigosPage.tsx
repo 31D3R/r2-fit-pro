@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Users, Trophy, Dumbbell, UserPlus, Share2, Copy, Check, X, ChevronLeft, ChevronRight, Clock, Lock } from 'lucide-react'
 import {
   meusAmigos, ativarAmigos, adicionarAmigo, responderPedido, removerAmizade, feedAmigos, curtir, rankingAmigos,
@@ -216,9 +216,12 @@ export default function AmigosPage() {
   const { user } = useAuth()
   const { codigo: codigoRota } = useParams<{ codigo?: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const codigoInicial = normalizarCodigo(codigoRota ?? '')
   const [dados, setDados] = useState<DadosAmigos | null>(null)
   const [aba, setAba] = useState<Aba>(codigoInicial ? 'amigos' : 'feed')
+  const aviso = (location.state as { aviso?: string } | null)?.aviso ?? ''
+  const adicionando = useRef(false)
   const [apelido, setApelido] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
@@ -226,6 +229,23 @@ export default function AmigosPage() {
   const carregar = useCallback(() => { meusAmigos().then(setDados).catch(e => { setErro(erroDe(e)); setDados({ perfil: null }) }) }, [])
   useEffect(() => { carregar() }, [carregar])
   useEffect(() => { if (user) setApelido(String(user.user_metadata?.nome ?? '').split(' ')[0]) }, [user])
+
+  // Entrou pelo link do amigo: já ficam amigos (ativa a área de amigos com o primeiro nome, se ainda não tinha)
+  useEffect(() => {
+    if (!dados || codigoInicial.length !== 6 || adicionando.current) return
+    adicionando.current = true
+    setOcupado(true); setErro('')
+    ;(async () => {
+      try {
+        if (!dados.perfil) await ativarAmigos(String(user?.user_metadata?.nome ?? '').split(' ')[0].slice(0, 40) || null)
+        const r = await adicionarAmigo(codigoInicial)
+        const texto = r.status === 'ja_amigos' ? `Você e ${r.nome} já são amigos.`
+          : r.status === 'aceita' ? `Agora você e ${r.nome} são amigos! 🎉`
+            : `Pedido enviado para ${r.nome}. Assim que aceitar, vocês aparecem um no feed do outro.`
+        navigate('/amigos', { replace: true, state: { aviso: texto } })
+      } catch (e) { setErro(erroDe(e)) } finally { setOcupado(false); carregar() }
+    })()
+  }, [dados, codigoInicial, user, navigate, carregar])
 
   const comecar = async () => {
     setOcupado(true); setErro('')
@@ -239,7 +259,7 @@ export default function AmigosPage() {
     } catch (e) { setErro(erroDe(e)) } finally { setOcupado(false) }
   }
 
-  if (dados === null) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+  if (dados === null || (codigoInicial && ocupado && !erro)) return <div className="flex flex-col items-center gap-3 py-16"><Spinner size="lg" />{codigoInicial && <p className="text-sm text-zinc-400">Adicionando seu amigo…</p>}</div>
   const pendentes = dados.recebidos?.length ?? 0
   return (
     <div className="flex flex-col gap-4">
@@ -247,6 +267,8 @@ export default function AmigosPage() {
         <h1 className="text-2xl font-bold text-zinc-50 flex items-center gap-2"><Users className="w-6 h-6 text-green-400" />Amigos</h1>
         <p className="text-sm text-zinc-500">Treine junto: veja os treinos dos amigos, dê um 💪 e dispute o ranking da semana.</p>
       </div>
+      {aviso && <p className="rounded-2xl bg-green-500/10 border border-green-500/25 px-4 py-3 text-sm text-green-100" data-testid="aviso-amigo">{aviso}</p>}
+      {erro && dados.perfil && <p className="text-sm text-red-400">{erro}</p>}
       {!dados.perfil ? (
         <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col gap-3 animate-fade-up">
           <p className="font-semibold text-zinc-100">{codigoInicial ? 'Um amigo te convidou! 🎉' : 'Comece a treinar com amigos'}</p>
