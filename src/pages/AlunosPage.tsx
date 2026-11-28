@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Users, ChevronRight, ChevronLeft, MessageCircle, AlertTriangle, Dumbbell, Flame, Scale, Send, Copy, Salad, Target, UserPlus, BarChart3, Utensils,
-  Pencil,
+  Pencil, ClipboardList, Pill, Camera, SlidersHorizontal, Lock,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
   meusAlunos, dadosAluno, copiarTreinoDoAluno, enviarTreino, enviarDieta, definirMeta, encerrarAcompanhamento,
-  type AlunoResumo, type DadosAluno,
+  fotosLiberadas, type AlunoResumo, type DadosAluno,
 } from '../lib/acompanhamento'
 import { alertasAluno, ordenarAlunos, diasDesde } from '../lib/acompanhamentoBase'
 import { guardarEdicaoAluno } from '../components/acompanhamento/EnviarParaAluno'
@@ -18,6 +18,7 @@ import { Button, Input, Select, Spinner } from '../components/UI'
 import { BarraMacro, fmt } from '../components/nutricao/Graficos'
 import GraficoPeso from '../components/progresso/GraficoPeso'
 import Conversa from '../components/acompanhamento/Conversa'
+import Avatar from '../components/Avatar'
 
 const erroDe = (e: unknown) => (e instanceof Error ? e.message : 'Algo deu errado. Tente novamente.')
 const kg = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
@@ -61,8 +62,8 @@ export function ListaAlunos() {
               return (
                 <li key={a.id} className="animate-fade-up" style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
                   <Link to={`/alunos/${a.aluno_id}`} className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-2xl px-4 py-3 transition">
-                    <span className="relative w-11 h-11 rounded-full bg-green-500/15 text-green-400 font-bold flex items-center justify-center shrink-0">
-                      {a.nome.charAt(0).toUpperCase()}
+                    <span className="relative shrink-0">
+                      <Avatar userId={a.aluno_id} nome={a.nome} />
                       {a.nao_lidas > 0 && <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">{a.nao_lidas}</span>}
                     </span>
                     <span className="flex-1 min-w-0">
@@ -201,7 +202,36 @@ function EditarMeta({ d, aoSalvar, aoCancelar }: { d: DadosAluno; aoSalvar: () =
   )
 }
 
-function Treinos({ d, userId, semana, aoMudar }: { d: DadosAluno; userId: string; semana: string; aoMudar: () => void }) {
+/** Atalhos do planejamento: meta e parâmetros, ergogênicos e fotos (cada um respeita o que o aluno liberou). */
+function AtalhosPlano({ d, verFotos }: { d: DadosAluno; verFotos: boolean }) {
+  const itens = [
+    { para: `/alunos/${d.aluno_id}/meta`, icone: SlidersHorizontal, titulo: 'Meta e parâmetros', texto: 'Calorias, macros, peso, altura, atividade e objetivo', ok: d.editar_planos },
+    { para: `/alunos/${d.aluno_id}/ergogenicos`, icone: Pill, titulo: 'Ergogênicos', texto: 'Doses, intervalos e lembretes', ok: d.editar_planos },
+    { para: `/alunos/${d.aluno_id}/fotos`, icone: Camera, titulo: 'Fotos de evolução', texto: verFotos ? 'Só visualizar' : 'O aluno ainda não liberou', ok: verFotos },
+  ]
+  return (
+    <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col gap-2">
+      <p className="text-sm font-semibold text-zinc-200">Planejamento de {d.nome}</p>
+      {!d.editar_planos && <p className="text-xs text-amber-300">O aluno não permitiu que você edite o planejamento. Peça para ele ligar "Pode editar meu planejamento" na tela Personal.</p>}
+      <div className="grid gap-2">
+        {itens.map(({ para, icone: Icone, titulo, texto, ok }) => ok ? (
+          <Link key={para} to={para} className="flex items-center gap-3 rounded-xl bg-zinc-950/60 border border-zinc-800 hover:border-zinc-700 px-3 py-2.5">
+            <Icone className="w-4 h-4 text-green-400 shrink-0" />
+            <span className="flex-1 min-w-0"><span className="block text-sm font-medium text-zinc-100">{titulo}</span><span className="block text-xs text-zinc-500 truncate">{texto}</span></span>
+            <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0" />
+          </Link>
+        ) : (
+          <div key={para} className="flex items-center gap-3 rounded-xl border border-zinc-800/60 px-3 py-2.5 opacity-60">
+            <Lock className="w-4 h-4 text-zinc-500 shrink-0" />
+            <span className="flex-1 min-w-0"><span className="block text-sm font-medium text-zinc-300">{titulo}</span><span className="block text-xs text-zinc-500 truncate">{ok ? texto : titulo === 'Fotos de evolução' ? texto : 'Bloqueado pelo aluno'}</span></span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function Treinos({ d, userId, semana, aoMudar, verFotos }: { d: DadosAluno; userId: string; semana: string; aoMudar: () => void; verFotos: boolean }) {
   const navigate = useNavigate()
   const [meus, setMeus] = useState<{ id: string; nome: string }[]>([])
   const [minhasDietas, setMinhasDietas] = useState<{ id: string; nome: string }[]>([])
@@ -247,6 +277,7 @@ function Treinos({ d, userId, semana, aoMudar }: { d: DadosAluno; userId: string
 
   return (
     <div className="flex flex-col gap-3">
+      <AtalhosPlano d={d} verFotos={verFotos} />
       {d.treinos && (
         <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col gap-2">
           <p className="text-sm font-semibold text-zinc-200">Treinos do aluno</p>
@@ -405,12 +436,14 @@ export function PainelAluno() {
   const [erro, setErro] = useState('')
   const [editandoMeta, setEditandoMeta] = useState(false)
   const [confirmar, setConfirmar] = useState(false)
+  const [verFotos, setVerFotos] = useState(false)
 
   const carregar = useCallback(() => {
     if (!alunoId) return
     dadosAluno(alunoId, semana, somarDias(semana, 6)).then(x => { setD(x); setErro('') }).catch(e => setErro(erroDe(e)))
   }, [alunoId, semana])
   useEffect(() => { carregar() }, [carregar])
+  useEffect(() => { if (d?.id) fotosLiberadas([d.id]).then(r => setVerFotos(!!r[d.id])).catch(() => {}) }, [d?.id])
 
   const encerrar = async () => {
     if (!d) return
@@ -427,7 +460,7 @@ export function PainelAluno() {
 
   const ABAS: { id: Aba; rotulo: string; icone: typeof Flame }[] = [
     { id: 'resumo', rotulo: 'Resumo', icone: BarChart3 },
-    { id: 'treinos', rotulo: 'Treinos', icone: Dumbbell },
+    { id: 'treinos', rotulo: 'Plano', icone: ClipboardList },
     { id: 'diario', rotulo: 'Diário', icone: Utensils },
     { id: 'mensagens', rotulo: 'Mensagens', icone: MessageCircle },
   ]
@@ -435,7 +468,7 @@ export function PainelAluno() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
         <Link to="/alunos" className="text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-800" aria-label="Voltar"><ChevronLeft className="w-5 h-5" /></Link>
-        <span className="w-11 h-11 rounded-full bg-green-500/15 text-green-400 font-bold flex items-center justify-center shrink-0">{d.nome.charAt(0).toUpperCase()}</span>
+        <Avatar userId={d.aluno_id} nome={d.nome} />
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-zinc-50 truncate">{d.nome}</h1>
           <p className="text-xs text-zinc-500">Aluno desde {new Date(d.desde).toLocaleDateString('pt-BR')}</p>
@@ -452,7 +485,7 @@ export function PainelAluno() {
       {editandoMeta && d.meta
         ? <EditarMeta d={d} aoCancelar={() => setEditandoMeta(false)} aoSalvar={() => { setEditandoMeta(false); carregar() }} />
         : aba === 'resumo' ? <Resumo d={d} semana={semana} setSemana={setSemana} aoMeta={() => setEditandoMeta(true)} />
-          : aba === 'treinos' ? <Treinos d={d} userId={user.id} semana={semana} aoMudar={carregar} />
+          : aba === 'treinos' ? <Treinos d={d} userId={user.id} semana={semana} aoMudar={carregar} verFotos={verFotos} />
             : aba === 'diario' ? <Diario d={d} semana={semana} />
               : <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4"><Conversa acompanhamentoId={d.id} meuId={user.id} souAluno={false} /></div>}
       {erro && <p className="text-sm text-red-400">{erro}</p>}

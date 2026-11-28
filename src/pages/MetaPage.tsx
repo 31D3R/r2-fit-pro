@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, Check, AlertTriangle, Pencil } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -10,6 +10,8 @@ import { useMeta, salvarMeta } from '../lib/nutricao'
 import { Button, Input, Spinner } from '../components/UI'
 import { useContagem, fmt } from '../components/nutricao/Graficos'
 import { useVoltar } from '../lib/useVoltar'
+import FaixaPlanoAluno from '../components/acompanhamento/FaixaPlanoAluno'
+import { useDonoDoPlano } from '../lib/planoDoAluno'
 
 const ICONE_OBJETIVO: Record<Objetivo, string> = { perder: '🔥', manter: '⚖️', ganhar: '💪' }
 
@@ -36,8 +38,12 @@ const inteiro = (s: string) => (s.replace(/\D/g, '') === '' ? NaN : Number(s.rep
 export default function MetaPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const voltarTela = useVoltar('/dashboard')
-  const { meta, carregando } = useMeta(user?.id)
+  // /alunos/:alunoId/meta: o personal ajusta a meta e os parâmetros do aluno (a mesma linha do aluno)
+  const { alunoId } = useParams<{ alunoId?: string }>()
+  const donoId = alunoId ?? user?.id
+  const dono = useDonoDoPlano(alunoId)
+  const voltarTela = useVoltar(alunoId ? `/alunos/${alunoId}` : '/dashboard')
+  const { meta, carregando } = useMeta(donoId)
   const [passo, setPasso] = useState(0)
   const [objetivo, setObjetivo] = useState<Objetivo>('perder')
   const [sexo, setSexo] = useState<Sexo | null>(null)
@@ -60,11 +66,11 @@ export default function MetaPage() {
       setAtividade(meta.atividade); setRitmo(meta.ritmo_kg_semana || 0.5); setSomarExercicio(meta.somar_exercicio)
       if (meta.personalizada) setManual({ calorias: String(meta.calorias), proteina_g: String(meta.proteina_g), carboidrato_g: String(meta.carboidrato_g), gordura_g: String(meta.gordura_g) })
       setPasso(4)
-    } else {
+    } else if (!alunoId) {
       supabase.from('profiles').select('data_nascimento').eq('id', user.id).maybeSingle()
         .then(({ data }) => { if (data?.data_nascimento) setNascimento(d => d || data.data_nascimento) })
     }
-  }, [carregando, meta, user])
+  }, [carregando, meta, user, alunoId])
 
   const idade = nascimento ? idadeEm(nascimento) : NaN
   const alturaN = numero(altura), pesoN = numero(peso)
@@ -83,13 +89,14 @@ export default function MetaPage() {
   const voltar = () => (passo === 0 ? voltarTela() : setPasso(p => (p === 4 && !temRitmo ? 2 : p - 1)))
 
   const salvar = async () => {
-    if (!user || !final || !calculada) return
+    if (!user || !donoId || !final || !calculada) return
     setErro(''); setSalvando(true)
     try {
       await salvarMeta({
-        user_id: user.id, sexo: sexo!, nascimento, altura_cm: alturaN, peso_kg: pesoN, atividade, objetivo,
+        user_id: donoId, sexo: sexo!, nascimento, altura_cm: alturaN, peso_kg: pesoN, atividade, objetivo,
         ritmo_kg_semana: temRitmo ? ritmo : 0, ...final, personalizada: !!manual, somar_exercicio: somarExercicio,
       })
+      if (alunoId) { navigate(`/alunos/${alunoId}`); return }
       // Leva a data de nascimento para o perfil, se ainda não estiver lá
       await supabase.from('profiles').update({ data_nascimento: nascimento }).eq('id', user.id).is('data_nascimento', null)
       navigate('/dashboard')
@@ -114,6 +121,8 @@ export default function MetaPage() {
         </div>
         <span className="text-xs text-zinc-500 tabular-nums w-8 text-right">{passoVisivel + 1}/{totalPassos}</span>
       </div>
+
+      {alunoId && <FaixaPlanoAluno dono={dono} oque="meta" />}
 
       <div key={passo} className="flex flex-col gap-3 animate-fade-up">
         <h1 className="text-2xl font-bold text-zinc-50">{titulos[passo]}</h1>
@@ -171,7 +180,7 @@ export default function MetaPage() {
       <div className="mt-auto pt-2">
         {passo < 4
           ? <Button size="lg" className="w-full" disabled={passo === 1 && !dadosValidos} onClick={avancar}>Continuar</Button>
-          : <Button size="lg" className="w-full" loading={salvando} disabled={!manualValido || !final} onClick={salvar}>Salvar minha meta</Button>}
+          : <Button size="lg" className="w-full" loading={salvando} disabled={!manualValido || !final} onClick={salvar}>{alunoId ? 'Salvar meta do aluno' : 'Salvar minha meta'}</Button>}
       </div>
     </div>
   )

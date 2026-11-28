@@ -29,6 +29,7 @@ import { ListaReceitas, EditorReceita } from './pages/ReceitasPage'
 import RelatorioPage from './pages/RelatorioPage'
 import LembretesPage from './pages/LembretesPage'
 import ErgogenicosPage from './pages/ErgogenicosPage'
+import FotosAlunoPage from './pages/FotosAlunoPage'
 import WorkoutPage from './pages/WorkoutPage'
 import PlanoWizardPage from './pages/PlanoWizardPage'
 import TreinoPlanoPage from './pages/TreinoPlanoPage'
@@ -104,6 +105,9 @@ function AppRoutes() {
       <Route path="/relatorio" element={<RotaPremium recurso="O relatório semanal"><RelatorioPage /></RotaPremium>} />
       <Route path="/alunos" element={<RotaPremium recurso="O acompanhamento de alunos"><ListaAlunos /></RotaPremium>} />
       <Route path="/alunos/:alunoId" element={<RotaPremium recurso="O acompanhamento de alunos"><PainelAluno /></RotaPremium>} />
+      <Route path="/alunos/:alunoId/meta" element={<RotaPremium recurso="O acompanhamento de alunos"><MetaPage /></RotaPremium>} />
+      <Route path="/alunos/:alunoId/ergogenicos" element={<RotaPremium recurso="O acompanhamento de alunos"><ErgogenicosPage /></RotaPremium>} />
+      <Route path="/alunos/:alunoId/fotos" element={<RotaPremium recurso="O acompanhamento de alunos"><FotosAlunoPage /></RotaPremium>} />
       <Route path="/lembretes" element={<RotaPremium recurso="Os lembretes"><LembretesPage /></RotaPremium>} />
       <Route path="/ergogenicos" element={<RotaPremium recurso="Os ergogênicos"><ErgogenicosPage /></RotaPremium>} />
       <Route path="/peso" element={<RotaPremium recurso="O controle de peso"><PesoPage /></RotaPremium>} />

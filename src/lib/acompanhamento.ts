@@ -9,7 +9,7 @@ export type { AlunoResumo } from './acompanhamentoBase'
 export interface Compartilhamento { ver_treinos: boolean; ver_diario: boolean; ver_peso: boolean; editar_planos: boolean }
 export interface MeuPersonal extends Compartilhamento { id: string; personal_id: string; nome: string; cref: string | null; desde: string; nao_lidas: number }
 export interface PerfilPersonal { codigo: string; nome_exibicao: string | null; cref: string | null; cref_verificado?: boolean }
-export interface Mensagem { id: string; acompanhamento_id: string; autor_id: string; tipo: 'texto' | 'treino' | 'dieta' | 'meta' | 'aviso'; texto: string; ref_id: string | null; lida_em: string | null; created_at: string }
+export interface Mensagem { id: string; acompanhamento_id: string; autor_id: string; tipo: 'texto' | 'treino' | 'dieta' | 'meta' | 'rotina' | 'aviso'; texto: string; ref_id: string | null; lida_em: string | null; created_at: string }
 export interface TreinoAluno { id: string; nome: string; objetivo: string | null; nivel: string | null; frequencia_semanal: number | null; created_at: string; enviado_por_mim: boolean }
 export interface SessaoAluno { treino_nome: string | null; dia_index: number; data_inicio: string; data_fim: string | null; concluido: boolean; feito?: boolean }
 export interface MetaAluno { calorias: number; proteina_g: number; carboidrato_g: number; gordura_g: number; agua_ml: number | null; meta_peso_kg: number | null; somar_exercicio: boolean; personalizada: boolean; peso_kg: number; objetivo: string }
@@ -105,3 +105,18 @@ export function useNaoLidas(ativo: boolean) {
 export interface PersonalAdmin { user_id: string; nome: string; email: string; cref: string | null; cref_verificado: boolean; cref_verificado_em: string | null; desde: string; alunos: number }
 export const adminPersonais = () => rpc<PersonalAdmin[]>('admin_personais')
 export const adminVerificarCref = (userId: string, ok: boolean) => rpc<null>('admin_verificar_cref', { p_user: userId, p_ok: ok })
+
+// --- Planejamento do aluno (o personal edita direto na conta do aluno) ---
+export interface FotoAluno { id: string; data: string; pose: string; caminho: string }
+/** Ergogênicos do aluno (o formato é normalizado na tela). */
+export const rotinaDoAluno = (alunoId: string) => rpc<unknown>('acomp_rotina_aluno', { p_aluno: alunoId })
+export const salvarRotinaDoAluno = (alunoId: string, rotina: unknown) => rpc<void>('acomp_salvar_rotina_aluno', { p_aluno: alunoId, p_rotina: rotina })
+export const fotosDoAluno = (alunoId: string) => rpc<FotoAluno[]>('acomp_fotos_aluno', { p_aluno: alunoId }).then(l => l ?? [])
+/** Aluno: liga/desliga "o personal pode ver minhas fotos de evolução". */
+export const permitirFotos = (acompanhamentoId: string, permitir: boolean) => rpc<void>('acomp_permitir_fotos', { p_id: acompanhamentoId, p_permitir: permitir })
+/** Permissão de fotos de cada acompanhamento (o aluno e o personal leem a própria linha). */
+export async function fotosLiberadas(ids: string[]): Promise<Record<string, boolean>> {
+  if (!ids.length) return {}
+  const { data } = await supabase.from('acompanhamentos').select('id, ver_fotos').in('id', ids)
+  return Object.fromEntries(((data as { id: string; ver_fotos: boolean }[] | null) ?? []).map(r => [r.id, !!r.ver_fotos]))
+}

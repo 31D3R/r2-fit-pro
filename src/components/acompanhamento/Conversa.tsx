@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Send, Dumbbell, Salad, Target, Handshake } from 'lucide-react'
+import { Send, Dumbbell, Salad, Target, Handshake, Pill } from 'lucide-react'
 import { listarMensagens, enviarMensagem, marcarLidas, type Mensagem } from '../../lib/acompanhamento'
 import { horaMensagem } from '../../lib/acompanhamentoBase'
 import { Spinner } from '../UI'
 
-const ICONES = { treino: Dumbbell, dieta: Salad, meta: Target, aviso: Handshake } as const
+const ICONES = { treino: Dumbbell, dieta: Salad, meta: Target, rotina: Pill, aviso: Handshake } as const
 
 /** Recados entre aluno e personal. Os avisos de treino, dieta e meta enviados aparecem na conversa. */
 export default function Conversa({ acompanhamentoId, meuId, souAluno, aoLer }: {
@@ -46,7 +46,7 @@ export default function Conversa({ acompanhamentoId, meuId, souAluno, aoLer }: {
     } catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível enviar.') } finally { setEnviando(false) }
   }
 
-  const destino = (m: Mensagem) => !souAluno || !m.ref_id ? (souAluno && m.tipo === 'meta' ? '/meta' : null)
+  const destino = (m: Mensagem) => !souAluno || !m.ref_id ? (souAluno && m.tipo === 'meta' ? '/meta' : souAluno && m.tipo === 'rotina' ? '/ergogenicos' : null)
     : m.tipo === 'treino' ? `/treino/${m.ref_id}` : m.tipo === 'dieta' ? `/dieta/${m.ref_id}` : null
 
   return (

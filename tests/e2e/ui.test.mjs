@@ -1968,7 +1968,11 @@ await t('personal: ativa o modo personal, vê alunos com alertas e acompanha um 
   await page.getByText('Frango grelhado').waitFor()
   await page.getByText(/água 1\.500 ml/).waitFor()
   // enviar um treino substituindo o do aluno
-  await page.getByRole('tab', { name: /Treinos/ }).click()
+  await page.getByRole('tab', { name: /Plano/ }).click()
+  // atalhos do planejamento do aluno (fotos ficam bloqueadas até o aluno liberar)
+  await page.getByRole('link', { name: /Meta e parâmetros/ }).waitFor()
+  await page.getByRole('link', { name: /Ergogênicos/ }).waitFor()
+  await page.getByText('O aluno ainda não liberou').waitFor()
   await page.getByLabel('Treino da sua conta').selectOption('tp1')
   await page.getByLabel('No aluno').selectOption('ta1')
   await page.getByRole('button', { name: 'Enviar treino' }).click()

@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Check, EyeOff, Eye, ShieldAlert, X, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { carregarRotina, salvarRotina } from '../lib/rotina'
 import {
   FORMAS, UNIDADES, MOMENTOS, MAX_ITENS, MAX_VEZES, dataCurta, desfazerVez, diaLocal, ehDeHoje, historicoPorDia, marcarVez,
-  normalizarItem, situacao, textoDose, textoIntervalo, textoVez, textoVezes, vezFeita, type ItemRotina, type Momento, type Rotina,
+  normalizarItem, normalizarRotina, rotinaVazia, situacao, textoDose, textoIntervalo, textoVez, textoVezes, vezFeita, type ItemRotina, type Momento, type Rotina,
 } from '../lib/rotinaBase'
 import { ehAppNativo } from '../lib/nativo'
 import { Button, Spinner } from '../components/UI'
 import { confirmar } from '../components/Confirmacao'
+import FaixaPlanoAluno from '../components/acompanhamento/FaixaPlanoAluno'
+import { useDonoDoPlano } from '../lib/planoDoAluno'
+import { rotinaDoAluno, salvarRotinaDoAluno } from '../lib/acompanhamento'
+
+const doBanco = (r: unknown): Rotina => (r ? normalizarRotina(r) : rotinaVazia())
 
 const CAMPO = 'w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-zinc-100 text-base focus:outline-none focus:ring-2 focus:ring-green-500 [color-scheme:dark]'
 const INTERVALOS = [1, 2, 3, 7, 14, 30]
@@ -115,6 +121,9 @@ function Formulario({ inicial, onSalvar, onCancelar }: { inicial: ItemRotina; on
 
 export default function ErgogenicosPage() {
   const { user } = useAuth()
+  // /alunos/:alunoId/ergogenicos: o personal edita a lista do aluno (marcar como feito continua só do aluno)
+  const { alunoId } = useParams<{ alunoId?: string }>()
+  const dono = useDonoDoPlano(alunoId)
   const [rotina, setRotina] = useState<Rotina | null>(null)
   const [editando, setEditando] = useState<ItemRotina | null>(null)
   const [aberto, setAberto] = useState<string | null>(null)
@@ -122,24 +131,36 @@ export default function ErgogenicosPage() {
   const hoje = diaLocal()
 
   useEffect(() => {
-    if (user) carregarRotina(user.id).then(setRotina).catch(() => setErro('Não foi possível carregar. Confira a internet.'))
-  }, [user])
+    if (!user) return
+    const carregar = alunoId ? rotinaDoAluno(alunoId).then(doBanco) : carregarRotina(user.id)
+    carregar.then(setRotina).catch(e => setErro(alunoId && e instanceof Error ? e.message : 'Não foi possível carregar. Confira a internet.'))
+  }, [user, alunoId])
 
-  const gravar = async (nova: Rotina) => {
-    const anterior = rotina
-    setRotina(nova); setErro('')
-    try { await salvarRotina(user!.id, nova) } catch (e) { setRotina(anterior); setErro(e instanceof Error ? e.message : 'Não foi possível salvar.') }
+  /** Aplica a mudança. No modo personal, por cima da versão mais nova do aluno (ele pode ter marcado uma dose agora). */
+  const gravar = async (mudar: (r: Rotina) => Rotina) => {
+    const anterior = rotina!
+    setRotina(mudar(anterior)); setErro('')
+    try {
+      if (alunoId) {
+        const nova = mudar(doBanco(await rotinaDoAluno(alunoId)))
+        await salvarRotinaDoAluno(alunoId, nova)
+        setRotina(nova)
+      } else await salvarRotina(user!.id, mudar(anterior))
+    } catch (e) { setRotina(anterior); setErro(e instanceof Error ? e.message : 'Não foi possível salvar.') }
   }
   const salvarItem = (i: ItemRotina) => {
-    const existe = rotina!.itens.some(x => x.id === i.id)
-    gravar({ ...rotina!, itens: existe ? rotina!.itens.map(x => (x.id === i.id ? i : x)) : [...rotina!.itens, i] })
+    gravar(r => {
+      const existe = r.itens.some(x => x.id === i.id)
+      // o histórico de doses marcadas é do aluno: a edição não apaga
+      return { ...r, itens: existe ? r.itens.map(x => (x.id === i.id ? { ...i, historico: x.historico } : x)) : [...r.itens, i] }
+    })
     setEditando(null)
   }
   const remover = async (i: ItemRotina) => {
-    if (await confirmar(`Remover "${i.nome}"?`, { ok: 'Remover' })) gravar({ ...rotina!, itens: rotina!.itens.filter(x => x.id !== i.id) })
+    if (await confirmar(`Remover "${i.nome}"?`, { ok: 'Remover' })) gravar(r => ({ ...r, itens: r.itens.filter(x => x.id !== i.id) }))
   }
   const trocarVez = (i: ItemRotina, k: number) =>
-    gravar({ ...rotina!, itens: rotina!.itens.map(x => (x.id === i.id ? (vezFeita(x, k, hoje) ? desfazerVez(x, k, hoje) : marcarVez(x, k, hoje)) : x)) })
+    gravar(r => ({ ...r, itens: r.itens.map(x => (x.id === i.id ? (vezFeita(x, k, hoje) ? desfazerVez(x, k, hoje) : marcarVez(x, k, hoje)) : x)) }))
 
   if (!rotina) return erro ? <p className="text-sm text-red-400">{erro}</p> : <div className="flex justify-center py-16"><Spinner size="lg" /></div>
 
@@ -151,12 +172,15 @@ export default function ErgogenicosPage() {
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold text-zinc-50">Ergogênicos</h1>
-        <p className="text-sm text-zinc-400 mt-1">Hormônios, medicamentos e suplementos: dose, intervalo e lembrete. Só você vê esta lista.</p>
+        <p className="text-sm text-zinc-400 mt-1">{alunoId
+          ? 'O que você mudar aqui vale na hora para o aluno, com os lembretes no celular dele.'
+          : 'Hormônios, medicamentos e suplementos: dose, intervalo e lembrete. Só você vê esta lista (e o personal, se você deixou ele editar seu planejamento).'}</p>
       </div>
+      {alunoId && <FaixaPlanoAluno dono={dono} oque="ergogenicos" />}
 
       {erro && <p role="alert" className="text-sm text-red-400">{erro}</p>}
 
-      {doDia.length > 0 && (
+      {doDia.length > 0 && !alunoId && (
         <section aria-label="Para hoje" className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
           <h2 className="px-4 pt-3.5 pb-2 font-semibold text-zinc-100">Para hoje</h2>
           <ul className="divide-y divide-zinc-800/70 border-t border-zinc-800/70">
@@ -183,7 +207,7 @@ export default function ErgogenicosPage() {
       {editando && <Formulario inicial={editando} onSalvar={salvarItem} onCancelar={() => setEditando(null)} />}
 
       <section aria-label="Meus itens" className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-        <h2 className="px-4 pt-3.5 pb-2 font-semibold text-zinc-100">Meus itens</h2>
+        <h2 className="px-4 pt-3.5 pb-2 font-semibold text-zinc-100">{alunoId ? 'Itens do aluno' : 'Meus itens'}</h2>
         {ordenados.length === 0 ? (
           <p className="px-4 pb-4 text-sm text-zinc-500">Nada cadastrado ainda. Toque em "Adicionar" para colocar o primeiro, com dose, intervalo e lembrete.</p>
         ) : (
@@ -229,8 +253,8 @@ export default function ErgogenicosPage() {
         )}
       </section>
 
-      <section aria-label="Privacidade" className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
-        <button type="button" role="switch" aria-checked={rotina.discreto} aria-label="Modo discreto" onClick={() => gravar({ ...rotina, discreto: !rotina.discreto })}
+      {!alunoId && <section aria-label="Privacidade" className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+        <button type="button" role="switch" aria-checked={rotina.discreto} aria-label="Modo discreto" onClick={() => gravar(r => ({ ...r, discreto: !r.discreto }))}
           className="w-full flex items-center gap-3 text-left">
           {rotina.discreto ? <EyeOff className="w-5 h-5 text-green-400 shrink-0" /> : <Eye className="w-5 h-5 text-zinc-500 shrink-0" />}
           <span className="flex-1">
@@ -244,7 +268,7 @@ export default function ErgogenicosPage() {
           </span>
         </button>
         {!ehAppNativo() && <p className="text-xs text-zinc-500 mt-3">Os alarmes no celular são do app Android. No iPhone, o que é para hoje aparece no Início e na tela do treino.</p>}
-      </section>
+      </section>}
 
       <p className="flex gap-2 text-[11px] text-zinc-500 leading-relaxed px-1">
         <ShieldAlert className="w-4 h-4 shrink-0 text-zinc-600" />

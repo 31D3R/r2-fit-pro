@@ -5,14 +5,16 @@ import { useAuth } from '../context/AuthContext'
 import { useAcesso } from '../context/AcessoContext'
 import { Button, Card, Input, Spinner } from '../components/UI'
 import { dataBR, ROTULO_ESTADO, traduzirErroAuth, validarEmail } from '../lib/formatos'
+import { esquecerAvatar } from '../lib/avatares'
 
-interface Perfil { nome: string | null; telefone: string | null; data_nascimento: string | null; avatar_url: string | null; email: string | null; created_at: string; versao_termos: string | null; aceite_termos_em: string | null }
+interface Perfil { nome: string | null; nome_publico: string | null; telefone: string | null; data_nascimento: string | null; avatar_url: string | null; email: string | null; created_at: string; versao_termos: string | null; aceite_termos_em: string | null }
 
 export default function PerfilPage() {
   const { user } = useAuth()
   const { estado } = useAcesso()
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [nome, setNome] = useState('')
+  const [nomePublico, setNomePublico] = useState('')
   const [telefone, setTelefone] = useState('')
   const [nascimento, setNascimento] = useState('')
   const [fotoUrl, setFotoUrl] = useState<string | null>(null)
@@ -28,11 +30,11 @@ export default function PerfilPage() {
   useEffect(() => {
     if (!user) return
     setFalhou(false)
-    supabase.from('profiles').select('nome, telefone, data_nascimento, avatar_url, email, created_at, versao_termos, aceite_termos_em')
+    supabase.from('profiles').select('nome, nome_publico, telefone, data_nascimento, avatar_url, email, created_at, versao_termos, aceite_termos_em')
       .eq('id', user.id).single().then(async ({ data }) => {
         if (!data) { setFalhou(true); return }
         setPerfil(data as Perfil)
-        setNome(data.nome ?? user.user_metadata?.nome ?? ''); setTelefone(data.telefone ?? ''); setNascimento(data.data_nascimento ?? '')
+        setNome(data.nome ?? user.user_metadata?.nome ?? ''); setNomePublico(data.nome_publico ?? ''); setTelefone(data.telefone ?? ''); setNascimento(data.data_nascimento ?? '')
         // Data de nascimento informada na meta diária vale para o perfil também
         if (!data.data_nascimento) {
           const { data: meta } = await supabase.from('metas_nutricionais').select('nascimento').eq('user_id', user.id).maybeSingle()
@@ -50,11 +52,12 @@ export default function PerfilPage() {
     e.preventDefault()
     setMsg(null)
     if (nome.trim().length < 2) { setMsg({ tipo: 'erro', texto: 'Informe seu nome.' }); return }
+    if (nomePublico.trim().length === 1) { setMsg({ tipo: 'erro', texto: 'O nome que os outros veem precisa de pelo menos 2 letras.' }); return }
     if (telefone && !/^[\d\s()+-]{8,20}$/.test(telefone)) { setMsg({ tipo: 'erro', texto: 'Telefone inválido.' }); return }
     if (nascimento && (Date.parse(nascimento) > Date.now() || Date.parse(nascimento) < Date.parse('1900-01-01'))) { setMsg({ tipo: 'erro', texto: 'Data de nascimento inválida.' }); return }
     setSalvando(true)
     const { error } = await supabase.from('profiles').update({
-      nome: nome.trim().slice(0, 120), telefone: telefone.trim() || null, data_nascimento: nascimento || null,
+      nome: nome.trim().slice(0, 120), nome_publico: nomePublico.trim().slice(0, 40) || null, telefone: telefone.trim() || null, data_nascimento: nascimento || null,
     }).eq('id', user!.id)
     if (!error) await supabase.auth.updateUser({ data: { nome: nome.trim().slice(0, 120) } })
     setSalvando(false)
@@ -71,6 +74,7 @@ export default function PerfilPage() {
     if (!error) {
       if (perfil?.avatar_url) await supabase.storage.from('avatars').remove([perfil.avatar_url])
       await supabase.from('profiles').update({ avatar_url: caminho }).eq('id', user!.id)
+      esquecerAvatar(user!.id)
       const { data: s } = await supabase.storage.from('avatars').createSignedUrl(caminho, 3600)
       setFotoUrl(s?.signedUrl ?? null)
       setPerfil(p => p && { ...p, avatar_url: caminho })
@@ -107,12 +111,14 @@ export default function PerfilPage() {
           <span className="absolute bottom-0 inset-x-0 bg-black/60 py-0.5 flex justify-center">{enviandoFoto ? <Spinner size="sm" /> : <Camera className="w-3.5 h-3.5" />}</span>
         </button>
         <input ref={inputFoto} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => e.target.files?.[0] && enviarFoto(e.target.files[0])} />
-        <div className="text-sm"><p className="font-semibold">{perfil.email}</p><p className="text-zinc-500">Membro desde {dataBR(perfil.created_at)}</p></div>
+        <div className="text-sm min-w-0"><p className="font-semibold truncate">{perfil.email}</p><p className="text-zinc-500">Membro desde {dataBR(perfil.created_at)}</p><p className="text-xs text-zinc-500 mt-0.5">Sua foto aparece para seus amigos, seu personal e seus alunos.</p></div>
       </div>
 
       <Card>
         <form onSubmit={salvar} className="flex flex-col gap-4" noValidate>
           <Input label="Nome" value={nome} onChange={e => setNome(e.target.value)} maxLength={120} autoComplete="name" />
+          <Input label="Nome que os outros veem (opcional)" value={nomePublico} onChange={e => setNomePublico(e.target.value)} maxLength={40}
+            placeholder={nome.trim().split(' ')[0] || 'Ex.: Ju Silva'} hint="Aparece para seus amigos no app, no ranking e no feed. Seu personal vê o nome completo." />
           <Input label="Telefone (opcional)" value={telefone} onChange={e => setTelefone(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999" />
           <Input label="E-mail" value={perfil.email ?? user?.email ?? ''} readOnly disabled hint="Para trocar, use “Alterar e-mail” abaixo." />
           <Input label="Data de nascimento (opcional)" type="date" value={nascimento} onChange={e => setNascimento(e.target.value)} />

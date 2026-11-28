@@ -117,7 +117,7 @@ function GerenciarAmigos({ dados, codigoInicial, aoMudar }: { dados: DadosAmigos
   const [ocupado, setOcupado] = useState('')
   const [aviso, setAviso] = useState('')
   const [erro, setErro] = useState('')
-  const [apelido, setApelido] = useState(perfil.apelido ?? perfil.nome)
+  const [apelido, setApelido] = useState(perfil.nome)
   const link = `${window.location.origin}/amigo/${perfil.codigo}`
 
   const executar = async (chave: string, f: () => Promise<void>) => {

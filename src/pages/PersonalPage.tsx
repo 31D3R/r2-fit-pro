@@ -5,13 +5,14 @@ import { useAuth } from '../context/AuthContext'
 import { useAcesso } from '../context/AcessoContext'
 import {
   verConvite, aceitarConvite, meusPersonais, atualizarCompartilhamento, encerrarAcompanhamento,
-  meuPerfilPersonal, ativarPersonal, meuDesconto, type MeuPersonal, type Compartilhamento, type PerfilPersonal, type DescontoPersonal,
+  meuPerfilPersonal, ativarPersonal, meuDesconto, fotosLiberadas, permitirFotos, type MeuPersonal, type Compartilhamento, type PerfilPersonal, type DescontoPersonal,
 } from '../lib/acompanhamento'
 import { normalizarCodigo, linkConvite } from '../lib/acompanhamentoBase'
 import { Button, Input, Spinner } from '../components/UI'
 import { brl } from '../lib/formatos'
 import Conversa from '../components/acompanhamento/Conversa'
 import Compartilhar from '../components/acompanhamento/Compartilhar'
+import Avatar from '../components/Avatar'
 import BoasVindasPersonal from '../components/acompanhamento/BoasVindasPersonal'
 import { useConfig } from '../lib/config'
 import { normalizarCref } from '../lib/crefBase'
@@ -81,6 +82,12 @@ function CartaoPersonal({ p, meuId, aoMudar }: { p: MeuPersonal; meuId: string; 
   const [erro, setErro] = useState('')
   const [confirmar, setConfirmar] = useState(false)
   const [ocupado, setOcupado] = useState(false)
+  const [fotos, setFotos] = useState<boolean | null>(null)
+  useEffect(() => { fotosLiberadas([p.id]).then(r => setFotos(!!r[p.id])).catch(() => setFotos(false)) }, [p.id])
+  const mudarFotos = async (v: boolean) => {
+    setFotos(v); setErro(''); setSalvo('')
+    try { await permitirFotos(p.id, v); setSalvo('Salvo') } catch (e) { setFotos(!v); setErro(erroDe(e)) }
+  }
 
   const mudar = async (v: Compartilhamento) => {
     const antes = escolha
@@ -96,7 +103,7 @@ function CartaoPersonal({ p, meuId, aoMudar }: { p: MeuPersonal; meuId: string; 
   return (
     <li className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col gap-3 animate-fade-up">
       <div className="flex items-center gap-3">
-        <span className="w-11 h-11 rounded-full bg-green-500/15 text-green-400 font-bold flex items-center justify-center shrink-0">{p.nome.charAt(0).toUpperCase()}</span>
+        <Avatar userId={p.personal_id} nome={p.nome} />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-zinc-100 truncate">{p.nome}</p>
           <p className="text-xs text-zinc-500">Seu personal{p.cref ? ` · CREF ${p.cref}` : ''} · desde {new Date(p.desde).toLocaleDateString('pt-BR')}</p>
@@ -115,6 +122,13 @@ function CartaoPersonal({ p, meuId, aoMudar }: { p: MeuPersonal; meuId: string; 
       {aberto === 'compartilhar' && (
         <div className="flex flex-col gap-2">
           <Compartilhar valor={escolha} onChange={mudar} />
+          <label className="flex items-start gap-3 py-2.5 cursor-pointer border-t border-zinc-800">
+            <input type="checkbox" role="switch" checked={!!fotos} disabled={fotos === null} onChange={e => mudarFotos(e.target.checked)} className="mt-0.5 w-5 h-5 accent-green-500 shrink-0" />
+            <span>
+              <span className="block text-sm font-medium text-zinc-100">Pode ver minhas fotos de evolução</span>
+              <span className="block text-xs text-zinc-500">Só para ver: ele não muda nem apaga nada. Vem desligado</span>
+            </span>
+          </label>
           {salvo && <p className="text-xs text-green-400">{salvo}</p>}
           {!confirmar
             ? <button onClick={() => setConfirmar(true)} className="self-start text-sm text-red-400 hover:text-red-300 mt-1">Encerrar acompanhamento</button>
