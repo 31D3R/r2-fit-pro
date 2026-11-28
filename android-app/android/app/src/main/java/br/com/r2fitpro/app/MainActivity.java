@@ -22,6 +22,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ContadorNativoPlugin.class);
         registerPlugin(LembretesNativoPlugin.class);
         registerPlugin(ArquivosNativoPlugin.class);
+        registerPlugin(NavegadorNativoPlugin.class);
         super.onCreate(savedInstanceState);
         if (abrirLink(getIntent(), 1500)) conferiuAreaTransferencia = true;
         else abrirDestino(getIntent(), 1500);

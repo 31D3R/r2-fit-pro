@@ -393,6 +393,73 @@ await t('cadastro contra robôs: envio instantâneo é barrado, campo-isca não 
   await ctx.close()
 })
 
+await t('entrar com o Google: botão só com o Google ligado; site vai ao Google; app volta pelo link e entra', async () => {
+  // Google desligado no Supabase: sem botão
+  {
+    const { ctx, page } = await contexto(browser)
+    await ctx.route('https://mock.supabase.co/auth/v1/settings', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ external: { google: false, email: true } }) }))
+    await page.goto(BASE + '/auth')
+    await page.getByRole('button', { name: 'Entrar' }).last().waitFor()
+    await page.waitForTimeout(400)
+    assert.equal(await page.getByRole('button', { name: /Continuar com o Google/ }).count(), 0, 'sem Google ligado, sem botão')
+    await ctx.close()
+  }
+  // Site com o Google ligado: o botão leva ao login do Supabase/Google e volta para a rota pedida
+  {
+    const { ctx, page } = await contexto(browser)
+    let destino = null
+    await ctx.route('https://mock.supabase.co/auth/v1/settings', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ external: { google: true, email: true } }) }))
+    await ctx.route('https://mock.supabase.co/auth/v1/authorize**', r => { destino = r.request().url(); return r.fulfill({ status: 200, contentType: 'text/html', body: '<p>google</p>' }) })
+    await page.goto(BASE + '/auth?modo=cadastro&next=/treino')
+    await page.getByRole('button', { name: /Continuar com o Google/ }).waitFor()
+    await page.getByText(/Ao continuar com o Google, você aceita/).waitFor()
+    await page.screenshot({ path: `${SHOTS}/login-google.png` })
+    await page.getByRole('button', { name: /Continuar com o Google/ }).click()
+    await page.waitForURL(/authorize/)
+    const u = new URL(destino)
+    assert.equal(u.searchParams.get('provider'), 'google')
+    assert.equal(u.searchParams.get('redirect_to'), BASE + '/treino')
+    await ctx.close()
+  }
+  // App antigo (sem o plugin que abre o navegador): sem botão, o Google bloquearia o login dentro do app
+  // App 1.9.3+: abre o navegador; a volta br.com.r2fitpro.app://login?code=... entra no app
+  for (const novo of [false, true]) {
+    const { ctx, page } = await contexto(browser)
+    await ctx.addInitScript(temPlugin => {
+      const ouvintes = {}
+      window.__abertos = []
+      window.__voltar = url => (ouvintes.appUrlOpen ?? []).forEach(cb => cb({ url }))
+      const plugins = {
+        App: { addListener: (ev, cb) => { (ouvintes[ev] ??= []).push(cb); return { remove: async () => {} } }, getLaunchUrl: async () => ({}), getInfo: async () => ({ build: '14', version: '1.9.3' }), exitApp: async () => {} },
+        NavegadorNativo: { abrir: async o => { window.__abertos.push(o.url) } },
+      }
+      window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: n => n === 'App' || (temPlugin && n === 'NavegadorNativo'), registerPlugin: n => plugins[n], Plugins: plugins }
+    }, novo)
+    const pedidosToken = []
+    await ctx.route('https://mock.supabase.co/auth/v1/settings', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ external: { google: true } }) }))
+    await ctx.route('https://mock.supabase.co/auth/v1/token**', r => { pedidosToken.push({ url: r.request().url(), corpo: r.request().postDataJSON() }); return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(sessao) }) })
+    await page.goto(BASE + '/auth')
+    await page.getByRole('button', { name: 'Entrar' }).last().waitFor()
+    await page.waitForTimeout(400)
+    if (!novo) {
+      assert.equal(await page.getByRole('button', { name: /Continuar com o Google/ }).count(), 0, 'app antigo não mostra o Google')
+      await ctx.close(); continue
+    }
+    await page.getByRole('button', { name: /Continuar com o Google/ }).click()
+    await page.waitForFunction(() => window.__abertos.length === 1)
+    const aberto = new URL(await page.evaluate(() => window.__abertos[0]))
+    assert.equal(aberto.searchParams.get('redirect_to'), 'br.com.r2fitpro.app://login')
+    assert.ok(aberto.searchParams.get('code_challenge'), 'app usa PKCE')
+    assert.ok(page.url().includes('/auth'), 'o app não sai da tela (o login segue no navegador)')
+    await page.evaluate(() => window.__voltar('br.com.r2fitpro.app://login?code=codigo-do-google'))
+    await page.waitForURL(u => !u.pathname.startsWith('/auth'))
+    const troca = pedidosToken.find(p => p.url.includes('grant_type=pkce'))
+    assert.ok(troca, 'troca o código pela sessão'); assert.equal(troca.corpo.auth_code, 'codigo-do-google'); assert.ok(troca.corpo.code_verifier)
+    assert.ok(await page.evaluate(() => !!localStorage.getItem('sb-mock-auth-token')), 'sessão guardada no cliente principal')
+    await ctx.close()
+  }
+})
+
 await t('login: 5 falhas bloqueiam novas tentativas temporariamente', async () => {
   const { ctx, page } = await contexto(browser)
   await ctx.unroute('https://mock.supabase.co/**')
