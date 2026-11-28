@@ -5,8 +5,10 @@ import { Card } from './UI'
 
 // "Agora não" vale até fechar o app; na próxima abertura o aviso volta
 const CHAVE = 'r2-atualizacao-dispensada'
-// Endereço fora do app: o app abre esse link no navegador do celular, que baixa e oferece instalar
-const BASE_DOWNLOAD = 'https://r2-fit-pro.vercel.app/baixar/'
+// Endereço fora do app: o app abre esse link no navegador do celular, que baixa e oferece instalar.
+// Tem que ser do projeto NOVO da Vercel (time elderconradt-4559s-projects) e ficar fora do allowNavigation do app
+// (não pode ser r2fitpro.com.br nem www). r2-fit-pro.vercel.app é do projeto ANTIGO: não usar.
+const BASE_DOWNLOAD = 'https://r2-fit-pro-sigma.vercel.app/baixar/'
 
 export interface InfoVersao {
   instalada: { codigo: number; nome: string } | null

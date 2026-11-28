@@ -900,7 +900,7 @@ await t('app Android desatualizado: aviso de versão nova com download pelo nave
     const aviso = page.getByRole('status', { name: 'Nova versão do app' })
     if (deve) {
       await aviso.waitFor()
-      assert.equal(await aviso.getByRole('link', { name: 'Atualizar agora' }).getAttribute('href'), `https://r2-fit-pro.vercel.app/baixar/${versao.arquivo}`, 'abre fora do app, arquivo com a versão no nome')
+      assert.equal(await aviso.getByRole('link', { name: 'Atualizar agora' }).getAttribute('href'), `https://r2-fit-pro-sigma.vercel.app/baixar/${versao.arquivo}`, 'abre fora do app, arquivo com a versão no nome')
       await page.screenshot({ path: `${SHOTS}/app-atualizar.png` })
       await aviso.getByRole('button', { name: 'Agora não' }).click()
       await aviso.waitFor({ state: 'detached' })
@@ -947,7 +947,7 @@ await t('app Android 1.9.2+: atualizar com um toque baixa dentro do app (permiss
   await aviso.getByRole('button', { name: 'Já permiti, atualizar' }).click()
   await aviso.getByText(/Baixando…/).waitFor()
   await aviso.getByText(/Toque em "Atualizar" na tela do Android/).waitFor()
-  assert.deepEqual(await page.evaluate(() => window.__chamadas), [1, 2].map(() => `https://r2-fit-pro.vercel.app/baixar/${versao.arquivo}`))
+  assert.deepEqual(await page.evaluate(() => window.__chamadas), [1, 2].map(() => `https://r2-fit-pro-sigma.vercel.app/baixar/${versao.arquivo}`))
   await page.screenshot({ path: `${SHOTS}/app-atualizar-um-toque.png` })
   assert.deepEqual(page.consoleErros, [])
   await ctx.close()

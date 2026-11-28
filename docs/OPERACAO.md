@@ -6,7 +6,7 @@
 |---|---|---|
 | Frontend | React 19 + Vite 6 + Tailwind 4 | Vercel (projeto `r2-fit-pro`, `prj_6VNDH39CawkkPGMkGbTHAekMTT98`, time `elderconradt-4559s-projects`; Git ligado a `31D3R/r2-fit-pro`, push na `main` publica sozinho) |
 | IA (proxy seguro) | Vercel Function `api/ai.js` | Vercel — usa `OPENAI_API_KEY` só no servidor |
-| Banco, Auth, Storage | Supabase (`pzmhlxhdqghamyxgegwq`, us-east-1) | RLS em todas as tabelas |
+| Banco, Auth, Storage | Supabase (`pzmhlxhdqghamyxgegwq`, us-east-1; org "R2 Fit Pro" `wskrdxwdvmjvmcifjkjj`, plano Pro) | RLS em todas as tabelas |
 | Cobrança, webhook, conta | Supabase Edge Function `r2-api` | `/functions/v1/r2-api/{billing,conta,webhook/asaas,webhook/mercadopago,saude}` |
 | Pagamentos | **Asaas** (desde 31/10/2026): assinatura no cartão e avulso por Pix/boleto/cartão. Mercado Pago só para assinaturas antigas | BRL |
 | E-mails transacionais | Resend (via fila `email_outbox`) | Verificação/recuperação de senha: Supabase Auth |
@@ -77,8 +77,8 @@ criado exclusivamente por `billing_registrar_pagamento` com pagamento aprovado c
 - E-mails futuros que falharem podem ser reenviados no painel (Integrações e erros → Reenviar pendentes).
 
 ### 3. Supabase Auth
-- *Authentication → URL Configuration* (configurado em 28/10/2026): **Site URL** `https://r2fitpro.com.br`; **Redirect URLs**: `https://r2fitpro.com.br/**` e `https://r2-fit-pro.vercel.app/**`.
-- Domínio oficial: `r2fitpro.com.br` (Registro.br, zona DNS própria com A 76.76.21.21 e CNAME www→cname.vercel-dns.com; e-mail via Resend com DKIM `resend._domainkey` e CNAMEs `send`/`rsend`). O endereço `r2-fit-pro.vercel.app` segue ativo como alternativa.
+- *Authentication → URL Configuration* (configurado em 28/10/2026): **Site URL** `https://r2fitpro.com.br`; **Redirect URLs**: `https://r2fitpro.com.br/**` e `https://r2-fit-pro.vercel.app/**` (este é do projeto antigo da Vercel; pode trocar por `https://r2-fit-pro-sigma.vercel.app/**`).
+- Domínio oficial: `r2fitpro.com.br` (Registro.br, zona DNS própria com A 216.198.79.1, TXT `_vercel` (2) e CNAME www→cname.vercel-dns.com, desde 26/11/2026 no projeto novo da Vercel; e-mail via Resend com DKIM `resend._domainkey` e CNAMEs `send`/`rsend`). Endereço alternativo do projeto novo: `r2-fit-pro-sigma.vercel.app` (`r2-fit-pro.vercel.app` é do projeto antigo, conta antiga).
 - *Authentication → Providers → Email*: manter **Confirm email** ativado (verificado: ativo); senha mínima 8.
 - *Password security*: ativar **Leaked password protection** (aviso do Security Advisor; recurso do plano Pro do Supabase).
 
@@ -311,8 +311,7 @@ observação; marca "feito" e a próxima vira hoje + intervalo (`src/lib/rotinaB
   exclusão de conta apaga fotos página por página; CORS só para prévias do time `elderconradt-4559s-projects`.
 - App Android (a gerar na 1.9.3, código 14): `allowNavigation` com domínios exatos, caminho recebido por outro app
   conferido, `allowBackup=false`.
-- Pendências do dono: ligar "Leaked password protection" no Supabase (Authentication); apagar a variável
-  `VITE_OPENAI_API_KEY` na Vercel (o servidor usa `OPENAI_API_KEY`).
+- "Leaked password protection" ligado em 26/11/2026; `VITE_OPENAI_API_KEY` não existe no projeto novo da Vercel.
 
 ### Auditoria de segurança (26/11/2026, depois da migração para as contas novas)
 - Contas: GitHub `31D3R/r2-fit-pro`; Vercel `prj_6VNDH39CawkkPGMkGbTHAekMTT98` (time `elderconradt-4559s-projects`, Git ligado:
@@ -327,10 +326,18 @@ observação; marca "feito" e a próxima vira hoje + intervalo (`src/lib/rotinaB
 - `vercel.json`: + `Cross-Origin-Opener-Policy: same-origin-allow-popups`.
 - `scripts/gen-voice.mjs` não lê mais `VITE_OPENAI_API_KEY`. A variável não existe no projeto novo da Vercel.
 - CORS da `r2-api` (no próximo deploy): prévias do time novo da Vercel e `r2-fit-pro-sigma.vercel.app`.
-- Atenção: o botão "Atualizar agora" do app Android baixa de `https://r2-fit-pro.vercel.app/baixar/`, que ainda é o
-  projeto ANTIGO da Vercel (conta antiga). Não apague o projeto antigo antes de trocar `BASE_DOWNLOAD`
-  (`src/components/AvisoAtualizacaoApp.tsx`) para um endereço do projeto novo que fique fora do app (não pode ser
-  `r2fitpro.com.br` nem `www`, que abrem dentro do app).
+- Botão "Atualizar agora" do app Android (`BASE_DOWNLOAD` em `src/components/AvisoAtualizacaoApp.tsx`): baixa de
+  `https://r2-fit-pro-sigma.vercel.app/baixar/` (projeto novo, fora do `allowNavigation`, abre no navegador do celular).
+  Como o app carrega o site, a troca vale também para quem está na 1.9.1 assim que o site for publicado.
+  Antes de apagar o projeto antigo (`rivaldo1/r2-fit-pro`, conta antiga), confirme que essa versão do site já está no ar.
+
+### Migração para as contas novas (26/11/2026)
+| Serviço | Conta nova | Conta antiga (não usar) |
+|---|---|---|
+| GitHub | `31D3R/r2-fit-pro` (o endereço antigo `rivaldoramos76-arch/r2-fit-pro` redireciona) | `rivaldoramos76-arch` |
+| Vercel | time `elderconradt-4559s-projects`, projeto `r2-fit-pro` (`prj_6VNDH39CawkkPGMkGbTHAekMTT98`), Git em `31D3R/r2-fit-pro`, domínios `r2fitpro.com.br`, `www` e `r2-fit-pro-sigma.vercel.app` | `rivaldo1/r2-fit-pro` (`prj_tfPw3HACgrbAYglRlsfpShVKKrH0`), só com `r2-fit-pro.vercel.app` |
+| Supabase | org "R2 Fit Pro" (`wskrdxwdvmjvmcifjkjj`, Pro, compute Micro): `r2-fit-pro` (`pzmhlxhdqghamyxgegwq`, mesmo id e chaves) e `dj-r2-atendimento` (`qjgegqzhuttkaqncwxcf`) | org antiga `gifgdudedbgmpothcjjy`, sem projetos |
+| OpenAI | `OPENAI_API_KEY` continua da conta antiga (decisão do dono) | — |
 
 ## Ideias anotadas para fazer depois
 
