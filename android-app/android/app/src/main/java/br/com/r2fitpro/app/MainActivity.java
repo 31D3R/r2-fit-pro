@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ContadorNativoPlugin.class);
         registerPlugin(LembretesNativoPlugin.class);
         registerPlugin(ArquivosNativoPlugin.class);
+        registerPlugin(NavegadorNativoPlugin.class);
         super.onCreate(savedInstanceState);
         abrirDestino(getIntent(), 1500);
     }
