@@ -139,7 +139,7 @@ async function contexto(browser, { logado = false, estado = 'sem_assinatura', ad
         { sessao_id: 's2', user_id: UID, nome: 'Cliente', eu: true, treino_nome: 'Treino B', dia_index: 1, data_fim: new Date(Date.now() - 26 * 3600000).toISOString(), minutos: 40, exercicios: 5, curtidas: 0, curti: false, quem_curtiu: null }])
       if (p === '/rest/v1/rpc/social_ranking') return json([
         { user_id: 'u2', nome: 'Bruno', eu: false, treinos: 4, dias_diario: 6 }, { user_id: UID, nome: 'Cliente', eu: true, treinos: 3, dias_diario: 7 }, { user_id: 'u3', nome: 'Carla', eu: false, treinos: 0, dias_diario: 0 }])
-      if (p.startsWith('/rest/v1/rpc/social_')) { grava(p.split('/').pop()); return json(p.endsWith('adicionar') ? { status: 'enviado', nome: 'Davi' } : null) }
+      if (p.startsWith('/rest/v1/rpc/social_')) { grava(p.split('/').pop()); return json(p.endsWith('adicionar') ? (rota.request().postDataJSON()?.p_codigo === 'B7UNO2' ? { status: 'aceita', nome: 'Bruno' } : { status: 'enviado', nome: 'Davi' }) : null) }
     }
     if (personal) {
       const grava = nome => gravacoes.push({ tabela: nome, corpo: rota.request().postDataJSON() })
@@ -2026,6 +2026,42 @@ await t('amigos: ativa, curte treino no feed, vê ranking e aceita pedido', asyn
   await page.getByText('Pedido enviado para Davi').waitFor()
   assert.equal(page.gravacoes.find(g => g.tabela === 'social_adicionar').corpo.p_codigo, 'DAVI22')
   assert.deepEqual(page.consoleErros, [])
+  await ctx.close()
+})
+
+await t('amigos: link do amigo já adiciona sozinho (ativa a área de amigos se precisar)', async () => {
+  const { ctx, page } = await contexto(browser, { logado: true, estado: 'ativa', amigos: true })
+  await page.goto(BASE + '/amigo/b7uno2')
+  await page.getByTestId('aviso-amigo').filter({ hasText: 'Agora você e Bruno são amigos' }).waitFor()
+  await page.waitForURL(/\/amigos$/)
+  assert.ok(page.gravacoes.some(g => g.tabela === 'social_ativar'))
+  assert.equal(page.gravacoes.find(g => g.tabela === 'social_adicionar').corpo.p_codigo, 'B7UNO2')
+  assert.equal(page.gravacoes.filter(g => g.tabela === 'social_adicionar').length, 1)
+  assert.deepEqual(page.consoleErros, [])
+  await ctx.close()
+})
+
+await t('convite no Chrome do Android: abrir no app ou baixar (copia o link para o app abrir o convite)', async () => {
+  const chrome = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36'
+  const { ctx, page } = await contexto(browser, { logado: false, userAgent: chrome, instalado: false })
+  await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE })
+  await page.goto(BASE + '/convite/k7p2qx')
+  await page.getByText('Seu personal te convidou').waitFor()
+  const href = await page.getByTestId('abrir-no-app').getAttribute('href')
+  assert.ok(href.startsWith('intent://localhost:4173/convite/K7P2QX#Intent;scheme=https;package=br.com.r2fitpro.app;'), href)
+  assert.ok(href.includes('S.browser_fallback_url=' + encodeURIComponent(BASE + '/convite/K7P2QX?sem_app=1')), href)
+  await page.screenshot({ path: `${SHOTS}/convite-android.png`, fullPage: true })
+  await page.getByTestId('baixar-convite').evaluate(a => a.removeAttribute('href'))
+  await page.getByTestId('baixar-convite').click()
+  await page.getByText('O convite abre sozinho').waitFor()
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), BASE + '/convite/K7P2QX')
+  // sem o app (o Chrome voltou do "Abrir no app"): só oferece baixar
+  await page.goto(BASE + '/amigo/b7uno2?sem_app=1')
+  await page.getByText('Um amigo te convidou!').waitFor()
+  assert.equal(await page.getByTestId('abrir-no-app').count(), 0)
+  // continuar no navegador: segue para o login de sempre
+  await page.getByRole('button', { name: 'Continuar pelo navegador' }).click()
+  await page.waitForURL(/\/auth\?next=%2Famigo%2Fb7uno2/)
   await ctx.close()
 })
 

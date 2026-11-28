@@ -22,6 +22,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Links de convite (personal e amigo) abrem direto no app. Verificado por /.well-known/assetlinks.json -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="r2fitpro.com.br" />
+                <data android:pathPrefix="/convite/" />
+                <data android:pathPrefix="/amigo/" />
+            </intent-filter>
+
         </activity>
 
         <service

@@ -1,4 +1,4 @@
--- Testes dos amigos: pedidos, feed só de amigos e com a privacidade respeitada, curtidas e ranking.
+-- Testes dos amigos: código/link do amigo já vira amizade, pedidos antigos, feed só de amigos e com a privacidade respeitada, curtidas e ranking.
 -- Tudo revertido no fim; esperado: "TESTES_OK (n)".
 DO $t$
 DECLARE
@@ -27,25 +27,25 @@ BEGIN
   IF cod_b !~ '^[A-Z0-9]{6}$' OR cod_a = cod_b THEN RAISE EXCEPTION 'FALHA 3: códigos'; END IF; n := n + 1;
   EXECUTE 'RESET ROLE';
 
-  -- 4. Ana pede, Bruno vê o pedido; ninguém lê a tabela direto
+  -- 4. Ana usa o código (link) do Bruno: já são amigos; ninguém lê a tabela direto
   PERFORM set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::TEXT, TRUE);
   EXECUTE 'SET LOCAL ROLE authenticated';
   j := public.social_adicionar(lower(cod_b));
-  IF j->>'status' <> 'enviado' OR j->>'nome' <> 'Bruno' THEN RAISE EXCEPTION 'FALHA 4: pedido (%)', j; END IF; n := n + 1;
+  IF j->>'status' <> 'aceita' OR j->>'nome' <> 'Bruno' THEN RAISE EXCEPTION 'FALHA 4: amizade pelo código (%)', j; END IF; n := n + 1;
   ok := FALSE; BEGIN PERFORM 1 FROM public.amizades; EXCEPTION WHEN insufficient_privilege THEN ok := TRUE; END;
   IF NOT ok THEN RAISE EXCEPTION 'FALHA 5: amizades legível'; END IF; n := n + 1;
   ok := FALSE; BEGIN PERFORM public.social_adicionar(cod_a); EXCEPTION WHEN raise_exception THEN ok := TRUE; END;
   IF NOT ok THEN RAISE EXCEPTION 'FALHA 6: adicionou a si mesma'; END IF; n := n + 1;
-  -- Antes de aceitar, o treino do Bruno não aparece
-  IF jsonb_array_length(public.social_feed()) <> 0 THEN RAISE EXCEPTION 'FALHA 7: feed antes de aceitar'; END IF; n := n + 1;
+  -- O treino do Bruno já aparece (sem esperar aceite)
+  IF jsonb_array_length(public.social_feed()) <> 1 THEN RAISE EXCEPTION 'FALHA 7: feed logo após adicionar'; END IF; n := n + 1;
   EXECUTE 'RESET ROLE';
 
-  -- 8. Bruno adiciona de volta pelo código = aceita
+  -- 8. Bruno não tem pedido para aceitar; usar o código da Ana diz que já são amigos
   PERFORM set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::TEXT, TRUE);
   EXECUTE 'SET LOCAL ROLE authenticated';
-  IF jsonb_array_length(public.social_amigos()->'recebidos') <> 1 OR public.social_pendentes() <> 1 THEN RAISE EXCEPTION 'FALHA 8: pedido recebido'; END IF; n := n + 1;
+  IF jsonb_array_length(public.social_amigos()->'recebidos') <> 0 OR public.social_pendentes() <> 0 THEN RAISE EXCEPTION 'FALHA 8: sobrou pedido'; END IF; n := n + 1;
   j := public.social_adicionar(cod_a);
-  IF j->>'status' <> 'aceita' THEN RAISE EXCEPTION 'FALHA 9: aceitar pelo código (%)', j; END IF; n := n + 1;
+  IF j->>'status' <> 'ja_amigos' THEN RAISE EXCEPTION 'FALHA 9: já amigos (%)', j; END IF; n := n + 1;
   EXECUTE 'RESET ROLE';
 
   -- 10. Ana vê o treino do Bruno e curte
@@ -70,9 +70,9 @@ BEGIN
   ok := FALSE; BEGIN PERFORM public.social_curtir(sid, TRUE); EXCEPTION WHEN raise_exception THEN ok := TRUE; END;
   IF NOT ok THEN RAISE EXCEPTION 'FALHA 14: estranha curtiu'; END IF; n := n + 1;
   IF jsonb_array_length(public.social_ranking(CURRENT_DATE - 6, CURRENT_DATE)) <> 1 THEN RAISE EXCEPTION 'FALHA 15: estranha vê ranking'; END IF; n := n + 1;
-  -- Carla pede à Ana, Ana recusa
-  PERFORM public.social_adicionar(cod_a);
   EXECUTE 'RESET ROLE';
+  -- Pedido antigo (de antes do link aceitar na hora) da Carla para a Ana: Ana recusa
+  INSERT INTO public.amizades (solicitante, destinatario) VALUES (c, a);
   PERFORM set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::TEXT, TRUE);
   EXECUTE 'SET LOCAL ROLE authenticated';
   pid := (public.social_amigos()->'recebidos'->0->>'id')::UUID;
